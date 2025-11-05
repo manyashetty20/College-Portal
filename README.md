@@ -28,13 +28,46 @@ This project implements a college portal system using a combination of:
 ### Web Interface
 - `index.html` - Main interface file
 
+## Dependencies
+
+### Python Packages
+Install the required Python packages using pip:
+
+```bash
+pip install flask               # Web framework for the backend
+pip install flask-cors         # Handle Cross-Origin Resource Sharing
+pip install mysql-connector-python  # MySQL database connectivity
+pip install python-dotenv      # Environment variable management
+pip install werkzeug          # Security and password hashing
+pip install pandas            # Data manipulation (for reports and analytics)
+```
+
+### Database
+- MySQL Server (version 5.7 or higher)
+
 ## Getting Started
 
-1. Set up your database server
-2. Run the SQL commands in `Sql_Cmd.sql` to initialize the database
-3. Execute complex queries using `complex_query.sql` as needed
-4. Run the Python script `backend.py` to start the backend
-5. Access the web interface through the HTML files
+1. Install Dependencies
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Set up your database server
+   - Install MySQL
+   - Create a new database
+   - Configure database credentials in `.env` file
+
+3. Database Setup
+   ```bash
+   mysql -u your_username -p your_database_name < Sql_Cmd.sql
+   ```
+
+4. Run the Python backend server
+   ```bash
+   python backend.py
+   ```
+
+5. Access the web interface by opening `index.html` in a web browser
 
 
 ## User Roles and Features

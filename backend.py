@@ -398,7 +398,7 @@ def delete_item(item_type, item_id):
 # --- Frontend Route ---
 @app.route('/')
 def index():
-    return render_template('i.html')
+    return render_template('index.html')
 
 # --- BLOB Storage/Streaming Features ---
 
