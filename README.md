@@ -36,12 +36,37 @@ This project implements a college portal system using a combination of:
 4. Run the Python script `backend.py` to start the backend
 5. Access the web interface through the HTML files
 
+
+## User Roles and Features
+
+### Student Features
+- View personal academic records and grades
+- Access course materials and assignments
+- Check attendance records
+- View exam schedules and results
+- Submit assignments and projects
+- Register for courses
+
+### Teacher Features
+- Manage course materials 
+- Take attendance
+- Input and manage student grades
+- Generate performance reports
+
+### Chairperson Features
+- Oversee department activities
+- Manage course allocations
+- View department statistics and Review student performance metrics
+- Generate department reports
+- Manage faculty assignments
+- Handle administrative requests
+
 ## Author
 
 Created by Manya Shetty
 
 ## Repository Information
 
-- Repository Name: Collage-Portal
+- Repository Name: Collage-Porta
 - Owner: manyashetty20
 - Branch: main
