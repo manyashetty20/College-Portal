@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .sidebar-link {
+            transition: all 0.2s ease-in-out;
+        }
+        .sidebar-link:hover, .sidebar-link.active {
+            background-color: #4338ca; /* indigo-700 */
+            color: white;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .table-header {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .modal {
+            display: flex;
+        }
+        .modal.hidden {
+            display: none;
+        }
+        .accordion-icon {
+            transition: transform 0.3s ease;
+        }
+        .rotate-180 {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div id="login-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
+            <h2 class="text-3xl font-bold mb-4 text-gray-800">Portal Login</h2>
+            <p id="login-error" class="text-red-500 mb-4 hidden">Invalid credentials. Please try again.</p>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="email" class="block text-left text-gray-700 mb-1">Email</label>
+                    <input type="email" id="email" class="w-full px-4 py-2 border rounded-lg" placeholder="Enter your email" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-left text-gray-700 mb-1">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 border rounded-lg" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition duration-300 flex items-center justify-center text-lg">
+                    <i class="fas fa-sign-in-alt mr-3"></i> Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="portal-container" class="flex h-screen bg-gray-100 hidden">
+        <aside class="w-64 bg-indigo-800 text-white flex flex-col">
+            <div class="h-16 flex items-center justify-center border-b border-indigo-700">
+                <i class="fas fa-university fa-2x mr-3"></i>
+                <h1 class="text-2xl font-bold">College Portal</h1>
+            </div>
+            <nav id="sidebar-nav" class="flex-1 px-4 py-6 space-y-2">
+                </nav>
+        </aside>
+
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <header class="h-16 bg-white border-b flex items-center justify-between px-6">
+                 <h2 id="page-title" class="text-2xl font-semibold text-gray-800">Dashboard</h2>
+                 <div class="flex items-center space-x-4">
+                     <span id="welcome-user" class="text-gray-600">Welcome, User!</span>
+                     <button id="logout-button" class="text-gray-500 hover:text-indigo-600">
+                         <i class="fas fa-sign-out-alt fa-lg"></i>
+                     </button>
+                 </div>
+            </header>
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+                <div id="reports-management" class="page"></div>
+                <div id="unassigned-teachers" class="page"></div>
+                <div id="student-ranking" class="page"></div>
+                <div id="grade-distribution" class="page"></div>
+                <div id="teacher-grades" class="page"></div>
+                <div id="my-materials" class="page"></div>
+                <div id="teacher-materials" class="page"></div> <div id="enroll-courses" class="page"></div>
+                <div id="dashboard-chairperson" class="page">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Total Students</p>
+                                <p id="stats-students" class="text-3xl font-bold">0</p>
+                            </div>
+                            <i class="fas fa-user-graduate text-5xl text-indigo-200"></i>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Total Teachers</p>
+                                <p id="stats-teachers" class="text-3xl font-bold">0</p>
+                            </div>
+                            <i class="fas fa-chalkboard-teacher text-5xl text-indigo-200"></i>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Courses Offered</p>
+                                <p id="stats-courses" class="text-3xl font-bold">0</p>
+                            </div>
+                           <i class="fas fa-book text-5xl text-indigo-200"></i>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Departments</p>
+                                <p id="stats-departments" class="text-3xl font-bold">0</p>
+                            </div>
+                           <i class="fas fa-building text-5xl text-indigo-200"></i>
+                        </div>
+                    </div>
+                    <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+                         <h3 class="text-xl font-semibold mb-4">Recent Announcements</h3>
+                         <ul id="chairperson-announcements">
+                            </ul>
+                    </div>
+                </div>
+
+                <div id="dashboard-student" class="page">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">Your Dashboard</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                            <h4 class="text-xl font-semibold mb-4">My Courses</h4>
+                            <ul id="student-courses-list" class="space-y-3">
+                                </ul>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h4 class="text-xl font-semibold mb-4">Recent Grades</h4>
+                            <ul id="student-grades-list" class="space-y-2 text-gray-700">
+                                </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dashboard-teacher" class="page">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">Teacher's Dashboard</h3>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h4 class="text-xl font-semibold mb-4">My Assigned Courses</h4>
+                        <ul id="teacher-courses-list" class="space-y-3">
+                           </ul>
+                    </div>
+                </div>
+
+                <div id="students" class="page"></div>
+                <div id="teachers" class="page"></div>
+                <div id="departments" class="page"></div>
+                <div id="courses" class="page"></div>
+                <div id="announcements" class="page"></div>
+
+                <div id="student-grades" class="page"></div>
+                <div id="student-attendance" class="page"></div>
+
+                <div id="teacher-attendance" class="page"></div>
+                <div id="teacher-grades" class="page"></div>
+                
+                <div id="enroll-courses" class="page"></div>
+
+                <div id="payments" class="page"></div>
+                <div id="grievances" class="page"></div>
+
+            </main>
+        </div>
+    </div>
+<div id="add-student-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg"><h3 class="text-2xl font-bold mb-6">Add New Student</h3><form id="add-student-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input class="border p-2 rounded-lg" name="s_id" placeholder="Student ID (e.g., S003)" required><input class="border p-2 rounded-lg" name="name" placeholder="Full Name" required><input class="border p-2 rounded-lg" name="enrollment_no" placeholder="Enrollment No" required><input class="border p-2 rounded-lg" type="email" name="email" placeholder="Email" required><input class="border p-2 rounded-lg" type="date" name="dob" required><input class="border p-2 rounded-lg" type="number" name="sem" placeholder="Semester" required><select class="border p-2 rounded-lg" name="d_id" id="student-dept-select" required></select><input class="border p-2 rounded-lg" type="password" name="password" placeholder="Default Password" required></div><div class="mt-8 flex justify-end space-x-4"><button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Add Student</button></div></form></div>
+</div>
+<div id="add-teacher-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg"><h3 class="text-2xl font-bold mb-6">Add New Teacher</h3><form id="add-teacher-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input class="border p-2 rounded-lg" name="t_id" placeholder="Teacher ID (e.g., T02)" required><input class="border p-2 rounded-lg" name="name" placeholder="Full Name" required><input class="border p-2 rounded-lg" name="designation" placeholder="Designation (e.g., Professor)" required><input class="border p-2 rounded-lg" type="email" name="email" placeholder="Email" required><select class="border p-2 rounded-lg" name="d_id" id="teacher-dept-select" required></select><input class="border p-2 rounded-lg" type="password" name="password" placeholder="Default Password" required></div><div class="mt-8 flex justify-end space-x-4"><button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Add Teacher</button></div></form></div></div>
+<div id="add-course-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg"><h3 class="text-2xl font-bold mb-6">Add New Course</h3><form id="add-course-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input class="border p-2 rounded-lg" name="c_id" placeholder="Course ID (e.g., CS102)" required><input class="border p-2 rounded-lg" name="c_name" placeholder="Course Name" required><input class="border p-2 rounded-lg" type="number" name="credits" placeholder="Credits" required><select class="border p-2 rounded-lg" name="d_id" id="course-dept-select" required></select><select class="border p-2 rounded-lg" name="t_id" id="course-teacher-select" required></select></div><div class="mt-8 flex justify-end space-x-4"><button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Add Course</button></div></form></div></div>
+<div id="add-department-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md"><h3 class="text-2xl font-bold mb-6">Add New Department</h3><form id="add-department-form"><div class="grid grid-cols-1 gap-4"><input class="border p-2 rounded-lg" name="d_id" placeholder="Department ID (e.g., D03)" required><input class="border p-2 rounded-lg" name="d_name" placeholder="Department Name" required></div><div class="mt-8 flex justify-end space-x-4"><button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Add Department</button></div></form></div></div>
+<div id="add-announcement-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg"><h3 class="text-2xl font-bold mb-6">Create New Announcement</h3><form id="add-announcement-form"><div class="grid grid-cols-1 gap-4"><input class="border p-2 rounded-lg" name="title" placeholder="Announcement Title" required><textarea class="border p-2 rounded-lg h-32" name="content" placeholder="Full announcement text..."></textarea></div><div class="mt-8 flex justify-end space-x-4"><button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Post Announcement</button></div></form></div></div>
+<div id="add-grievance-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg"><h3 class="text-2xl font-bold mb-6">Submit a Grievance</h3><form id="add-grievance-form"><div class="grid grid-cols-1 gap-4"><input class="border p-2 rounded-lg" name="title" placeholder="Grievance Title" required><textarea class="border p-2 rounded-lg h-32" name="description" placeholder="Describe your issue in detail..."></textarea></div><div class="mt-8 flex justify-end space-x-4"><button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Submit Grievance</button></div></form></div></div>
+<div id="view-students-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h3 id="view-students-title" class="text-2xl font-bold mb-6">Enrolled Students</h3>
+        <div id="view-students-list" class="max-h-80 overflow-y-auto"></div>
+        <div class="mt-8 flex justify-end">
+            <button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- State & Config ---
+    const portalContainer = document.getElementById('portal-container');
+    const loginModal = document.getElementById('login-modal');
+    const sidebarNav = document.getElementById('sidebar-nav');
+    const pageTitle = document.getElementById('page-title');
+    const welcomeUserSpan = document.getElementById('welcome-user');
+    const loginForm = document.getElementById('login-form');
+    const logoutButton = document.getElementById('logout-button');
+    const loginError = document.getElementById('login-error');
+
+    const rolesConfig = {
+        student: {
+            name: 'Student',
+            dashboardId: 'dashboard-student',
+            links: [
+                { href: '#dashboard-student', icon: 'fa-tachometer-alt', text: 'Dashboard' },
+                { href: '#student-grades', icon: 'fa-clipboard-list', text: 'My Grades' },
+                { href: '#student-attendance', icon: 'fa-user-check', text: 'My Attendance' },
+                { href: '#my-materials', icon: 'fa-folder-open', text: 'Course Materials' }, // <-- ADD THIS LINE
+                { href: '#enroll-courses', icon: 'fa-plus-circle', text: 'Enroll in Course' },
+                { href: '#payments', icon: 'fa-money-bill-wave', text: 'Payments' },
+                { href: '#grievances', icon: 'fa-exclamation-circle', text: 'Grievances' }
+            ]
+        },
+        teacher: {
+            name: 'Teacher',
+            dashboardId: 'dashboard-teacher',
+            links: [
+                { href: '#dashboard-teacher', icon: 'fa-tachometer-alt', text: 'Dashboard' },
+                { href: '#teacher-materials', icon: 'fa-folder-open', text: 'My Uploads' }, // <-- ADD THIS
+                { href: '#teacher-attendance', icon: 'fa-user-check', text: 'Mark Attendance' },
+                { href: '#teacher-grades', icon: 'fa-clipboard-list', text: 'Enter Grades' },
+                { href: '#grievances', icon: 'fa-exclamation-circle', text: 'Grievances' }
+            ]
+        },
+        chairperson: {
+            name: 'Chairperson',
+            dashboardId: 'dashboard-chairperson',
+            links: [
+                { href: '#dashboard-chairperson', icon: 'fa-tachometer-alt', text: 'Dashboard' },
+                { href: '#students', icon: 'fa-user-graduate', text: 'Students' },
+                { href: '#teachers', icon: 'fa-chalkboard-teacher', text: 'Teachers' },
+                { href: '#departments', icon: 'fa-building', text: 'Departments' },
+                { href: '#courses', icon: 'fa-book', text: 'Courses' },
+                { href: '#reports-management', icon: 'fa-chart-pie', text: 'Reports & Analytics' }, // <-- NEW
+                { href: '#announcements', icon: 'fa-bullhorn', text: 'Announcements' },
+                { href: '#payments', icon: 'fa-money-bill-wave', text: 'Payments' },
+                { href: '#grievances', icon: 'fa-exclamation-circle', text: 'Grievances' }
+            ]
+        }
+    };
+
+    // --- API & Data Handling ---
+    const apiRequest = async (url, method = 'GET', body = null) => {
+        try {
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            if (body) options.body = JSON.stringify(body);
+            const response = await fetch(`/api${url}`, options);
+            if (!response.ok) {
+                 const err = await response.json();
+                 throw new Error(err.message || `HTTP error! status: ${response.status}`);
+            }
+            if (method === 'DELETE' || response.status === 204 || method === 'PUT') return { success: true };
+            return await response.json();
+        } catch (error) {
+            console.error(`API request failed: ${method} ${url}`, error);
+            alert(`An error occurred: ${error.message}`);
+            return null;
+        }
+    };
+
+    // --- Page Loaders & Renderers ---
+    const pageLoaders = {
+        'unassigned-teachers': async () => {
+            const teachers = await apiRequest('/report/unassigned_teachers');
+            const container = document.getElementById('unassigned-teachers');
+
+            let tableRows = '';
+            if (teachers && teachers.length) {
+                tableRows = teachers.map(t => `
+                    <tr class="border-b">
+                        <td class="p-4">${t.t_id}</td>
+                        <td class="p-4">${t.name}</td>
+                        <td class="p-4">${t.designation}</td>
+                        <td class="p-4">${t.department_name}</td>
+                    </tr>`).join('');
+            } else {
+                tableRows = `<tr><td colspan="4" class="p-4 text-center text-green-600 font-semibold">SUCCESS! All teachers are currently assigned to a course.</td></tr>`;
+            }
+
+            container.innerHTML = `
+                <h3 class="text-2xl font-semibold mb-6">Unassigned Teachers List</h3>
+                <p class="mb-4 text-gray-600">This list identifies teachers who are not currently listed as the primary instructor for any course.</p>
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full">
+                        <thead class="table-header">
+                            <tr>
+                                <th class="p-4 text-left font-semibold">ID</th>
+                                <th class="p-4 text-left font-semibold">Name</th>
+                                <th class="p-4 text-left font-semibold">Designation</th>
+                                <th class="p-4 text-left font-semibold">Department</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>`;
+        },
+        'teacher-materials': async (user) => {
+            const materials = await apiRequest(`/materials/teacher/${user.user_id}`);
+            const container = document.getElementById('teacher-materials');
+            let content = `<h3 class="text-xl font-semibold mb-6">My Uploaded Course Materials</h3>`;
+
+            if (materials && materials.length) {
+                let tableRows = materials.map(m => `
+                    <tr class="border-b">
+                        <td class="p-4">${m.title}</td>
+                        <td class="p-4">${m.c_name}</td>
+                        <td class="p-4">${m.file_name}</td>
+                        <td class="p-4">${new Date(m.upload_date).toLocaleDateString()}</td>
+                        <td class="p-4">
+                            <a href="/api/materials/download/${m.material_id}" target="_blank" class="text-indigo-600 hover:text-indigo-800 font-medium">
+                                <i class="fas fa-download mr-1"></i> View/Download
+                            </a>
+                            </td>
+                    </tr>
+                `).join('');
+
+                content += `
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <table class="min-w-full">
+                            <thead class="table-header">
+                                <tr>
+                                    <th class="p-4 text-left font-semibold">Title</th>
+                                    <th class="p-4 text-left font-semibold">Course</th>
+                                    <th class="p-4 text-left font-semibold">File Name</th>
+                                    <th class="p-4 text-left font-semibold">Date Uploaded</th>
+                                    <th class="p-4 text-left font-semibold">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>${tableRows}</tbody>
+                        </table>
+                    </div>`;
+            } else {
+                content += '<p class="text-center bg-white p-4 rounded-lg shadow">You have not uploaded any materials yet.</p>';
+            }
+            container.innerHTML = content;
+        },
+        'enroll-courses': async (user) => {
+            const courses = await apiRequest(`/courses?s_id=${user.user_id}`);
+            const container = document.getElementById('enroll-courses');
+            let content = `
+                <h3 class="text-xl font-semibold mb-6">Available Courses for Enrollment</h3>
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full">
+                        <thead class="table-header">
+                            <tr>
+                                <th class="p-4 text-left font-semibold">Course Name</th>
+                                <th class="p-4 text-left font-semibold">Department</th>
+                                <th class="p-4 text-left font-semibold">Credits</th>
+                                <th class="p-4 text-left font-semibold">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            if (courses && courses.length) {
+                courses.forEach(c => {
+                    const buttonHtml = c.is_enrolled
+                        ? `<button class="bg-gray-400 text-white px-3 py-1 rounded-lg cursor-not-allowed" disabled>Enrolled</button>`
+                        : `<button class="enroll-btn bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 shadow" data-course-id="${c.c_id}">Enroll</button>`;
+                    content += `
+                        <tr class="border-b">
+                            <td class="p-4">${c.c_name}</td>
+                            <td class="p-4">${c.department}</td>
+                            <td class="p-4 text-center">${c.credits}</td>
+                            <td class="p-4">${buttonHtml}</td>
+                        </tr>`;
+                });
+            } else {
+                content += `<tr><td colspan="4" class="p-4 text-center">No courses available for enrollment.</td></tr>`;
+            }
+            container.innerHTML = content + '</tbody></table></div>';
+        },
+        'payments': async (user) => {
+            const payments = await apiRequest(`/payments/${user.user_id}`);
+            const container = document.getElementById('payments');
+            let content = `
+                <h3 class="text-xl font-semibold mb-6">Payment History</h3>
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full">
+                        <thead class="table-header">
+                            <tr>
+                                <th class="p-4 text-left font-semibold">Transaction ID</th>
+                                <th class="p-4 text-left font-semibold">Amount</th>
+                                <th class="p-4 text-left font-semibold">Type</th>
+                                <th class="p-4 text-left font-semibold">Date</th>
+                                <th class="p-4 text-left font-semibold">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            if (payments && payments.length) {
+                payments.forEach(p => {
+                    const statusClass = p.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                    content += `
+                        <tr class="border-b">
+                            <td class="p-4">${p.transaction_id}</td>
+                            <td class="p-4">$${p.amt}</td>
+                            <td class="p-4">${p.type}</td>
+                            <td class="p-4">${new Date(p.date).toLocaleDateString()}</td>
+                            <td class="p-4"><span class="${statusClass} px-2 py-1 rounded-full text-sm">${p.status}</span></td>
+                        </tr>`;
+                });
+            } else {
+                content += `<tr><td colspan="5" class="p-4 text-center">No payment history found.</td></tr>`;
+            }
+            container.innerHTML = content + '</tbody></table></div>';
+        },
+        'student-attendance': async (user) => {
+            const attendance = await apiRequest(`/student/${user.user_id}/attendance`);
+            const container = document.getElementById('student-attendance');
+            
+            let content = `<h3 class="text-xl font-semibold mb-6">My Attendance</h3>`;
+
+            if (!attendance || attendance.length === 0) {
+                container.innerHTML = content + '<p>No attendance records found.</p>';
+                return;
+            }
+
+            const groupedAttendance = attendance.reduce((acc, record) => {
+                const courseName = record.c_name;
+                if (!acc[courseName]) acc[courseName] = [];
+                acc[courseName].push(record);
+                return acc;
+            }, {});
+
+            content += '<div class="space-y-4">';
+            for (const courseName in groupedAttendance) {
+                const records = groupedAttendance[courseName];
+                const totalClasses = records.length;
+                const presentClasses = records.filter(r => r.status.toLowerCase() === 'present').length;
+                const percentage = totalClasses > 0 ? ((presentClasses / totalClasses) * 100).toFixed(0) : 0;
+
+                content += `
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <button class="w-full p-4 text-left flex justify-between items-center accordion-toggle hover:bg-gray-50">
+                            <div>
+                                <p class="font-semibold text-lg">${courseName}</p>
+                                <p class="text-sm text-gray-600">Overall: ${percentage}% (${presentClasses}/${totalClasses} days present)</p>
+                            </div>
+                            <i class="fas fa-chevron-down accordion-icon"></i>
+                        </button>
+                        <div class="accordion-content hidden p-4 border-t bg-gray-50">
+                            <table class="min-w-full">
+                                <thead class="table-header">
+                                    <tr><th class="p-2 text-left font-semibold">Date</th><th class="p-2 text-left font-semibold">Status</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${records.map(r => `
+                                        <tr class="border-b"><td class="p-2">${new Date(r.date).toLocaleDateString()}</td>
+                                        <td class="p-2 font-bold ${r.status.toLowerCase() === 'present' ? 'text-green-600' : 'text-red-600'}">${r.status}</td></tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`;
+            }
+            content += '</div>';
+            container.innerHTML = content;
+        },
+        'teacher-attendance': async (user) => {
+            const courses = await apiRequest(`/teacher/${user.user_id}/courses`);
+            const container = document.getElementById('teacher-attendance');
+            let courseOptions = '<option disabled selected value="">Select a course</option>';
+            if (courses && courses.length) {
+                courses.forEach(c => {
+                    courseOptions += `<option value="${c.c_id}">${c.c_name}</option>`;
+                });
+            }
+
+            container.innerHTML = `
+                <h3 class="text-xl font-semibold mb-6">Mark Attendance</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-700">Course</label>
+                            <select id="attendance-course-select" class="w-full mt-1 p-2 border rounded-lg">${courseOptions}</select>
+                        </div>
+                         <div>
+                            <label class="block text-gray-700">Date</label>
+                            <input id="attendance-date" type="date" class="w-full mt-1 p-2 border rounded-lg" value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                    </div>
+                    <div id="attendance-student-list">
+                        <p class="text-center text-gray-500">Please select a course to see the student list.</p>
+                    </div>
+                </div>`;
+            document.getElementById('attendance-course-select').addEventListener('change', loadStudentsForAttendance);
+        },
+        'teacher-grades': async (user) => {
+            const courses = await apiRequest(`/teacher/${user.user_id}/courses`);
+            const container = document.getElementById('teacher-grades');
+            let courseOptions = '<option disabled selected value="">Select a course</option>';
+            if (courses && courses.length) {
+                courses.forEach(c => {
+                    courseOptions += `<option value="${c.c_id}">${c.c_name}</option>`;
+                });
+            }
+            container.innerHTML = `
+                 <h3 class="text-xl font-semibold mb-6">Enter Grades</h3>
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-700">Course</label>
+                            <select id="grades-course-select" class="w-full mt-1 p-2 border rounded-lg">${courseOptions}</select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700">Assessment</label>
+                            <input type="text" id="grades-assessment-name" placeholder="e.g., Mid-Term Exam" class="w-full mt-1 p-2 border rounded-lg">
+                        </div>
+                         <div>
+                            <label class="block text-gray-700">Date</label>
+                            <input id="grades-date" type="date" class="w-full mt-1 p-2 border rounded-lg" value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                     </div>
+                     <div id="grades-student-list">
+                        <p class="text-center text-gray-500">Please select a course to see the student list.</p>
+                     </div>
+                 </div>`;
+            document.getElementById('grades-course-select').addEventListener('change', loadStudentsForGrades);
+        },
+        'grievances': async (user) => {
+            const container = document.getElementById('grievances');
+            if (user.role === 'teacher' || user.role === 'chairperson') {
+                const grievances = await apiRequest('/grievances/all');
+                let content = `
+                    <h3 class="text-xl font-semibold mb-6">Manage All Grievances</h3>
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="table-header">
+                                <tr>
+                                    <th class="p-4 text-left font-semibold">Submitted By</th>
+                                    <th class="p-4 text-left font-semibold">Title</th>
+                                    <th class="p-4 text-left font-semibold">Description</th>
+                                    <th class="p-4 text-left font-semibold">Date</th>
+                                    <th class="p-4 text-left font-semibold">Status</th>
+                                    <th class="p-4 text-left font-semibold">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                if (grievances && grievances.length) {
+                    grievances.forEach(g => {
+                        const isResolved = g.status.toLowerCase() === 'resolved';
+                        const statusClass = isResolved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                        const actionButton = isResolved
+                            ? `<span class="text-gray-400">Resolved</span>`
+                            : `<button class="resolve-btn bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600" data-grievance-id="${g.g_id}">Resolve</button>`;
+                        
+                        content += `
+                            <tr class="border-b">
+                                <td class="p-4 align-top">${g.submitted_by}</td>
+                                <td class="p-4 align-top">${g.title}</td>
+                                <td class="p-4 text-sm text-gray-600 align-top max-w-xs">${g.description}</td>
+                                <td class="p-4 align-top">${new Date(g.date_submitted).toLocaleDateString()}</td>
+                                <td class="p-4 align-top"><span class="${statusClass} px-2 py-1 rounded-full text-sm">${g.status}</span></td>
+                                <td class="p-4 align-top">${actionButton}</td>
+                            </tr>`;
+                    });
+                } else {
+                    content += `<tr><td colspan="6" class="p-4 text-center">No grievances found.</td></tr>`;
+                }
+                container.innerHTML = content + '</tbody></table></div></div>';
+            } 
+            else {
+                const grievances = await apiRequest(`/grievances/${user.user_id}`);
+                let content = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-semibold">My Grievances</h3>
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow" id="submit-grievance-btn">+ Submit Grievance</button>
+                    </div>
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <table class="min-w-full">
+                            <thead class="table-header">
+                                <tr>
+                                    <th class="p-4 text-left font-semibold">G-Id</th>
+                                    <th class="p-4 text-left font-semibold">Title</th>
+                                    <th class="p-4 text-left font-semibold">Date Submitted</th>
+                                    <th class="p-4 text-left font-semibold">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                if (grievances && grievances.length) {
+                    grievances.forEach(g => {
+                        const statusClass = g.status.toLowerCase() === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                        content += `
+                            <tr class="border-b">
+                                <td class="p-4">${g.g_id}</td>
+                                <td class="p-4">${g.title}</td>
+                                <td class="p-4">${new Date(g.date_submitted).toLocaleDateString()}</td>
+                                <td class="p-4"><span class="${statusClass} px-2 py-1 rounded-full text-sm">${g.status}</span></td>
+                            </tr>`;
+                    });
+                } else {
+                    content += `<tr><td colspan="4" class="p-4 text-center">No grievances found.</td></tr>`;
+                }
+                container.innerHTML = content + '</tbody></table></div>';
+            }
+        },
+        'dashboard-chairperson': async () => {
+            const stats = await apiRequest('/dashboard/stats');
+            if (stats) {
+                document.getElementById('stats-students').textContent = stats.students || 0;
+                document.getElementById('stats-teachers').textContent = stats.teachers || 0;
+                document.getElementById('stats-courses').textContent = stats.courses || 0;
+                document.getElementById('stats-departments').textContent = stats.departments || 0;
+            }
+            const announcements = await apiRequest('/announcements');
+            const list = document.getElementById('chairperson-announcements');
+            list.innerHTML = '';
+            if (announcements && announcements.length) {
+                announcements.slice(0, 3).forEach(a => {
+                    list.innerHTML += `<li class="border-b py-2"><strong class="text-indigo-600">${a.title}:</strong> ${a.content}</li>`;
+                });
+            } else {
+                 list.innerHTML = '<li>No recent announcements.</li>';
+            }
+        },
+        'dashboard-student': async (user) => {
+            const data = await apiRequest(`/dashboard/student/${user.user_id}`);
+            if(!data) return;
+            
+            const coursesList = document.getElementById('student-courses-list');
+            coursesList.innerHTML = '';
+            if (data.courses && data.courses.length > 0) {
+                data.courses.forEach(c => {
+                    coursesList.innerHTML += `<li class="p-3 rounded-md bg-gray-50">${c.c_name}</li>`;
+                });
+            } else {
+                coursesList.innerHTML = '<li>You are not enrolled in any courses.</li>';
+            }
+
+            const gradesList = document.getElementById('student-grades-list');
+            gradesList.innerHTML = '';
+            if(data.grades && data.grades.length > 0) {
+                data.grades.forEach(g => {
+                    gradesList.innerHTML += `<li>${g.c_name} ${g.assessment}: <span class="font-bold text-green-600">${g.grade}</span></li>`;
+                });
+            } else {
+                gradesList.innerHTML = '<li>No recent grades found.</li>';
+            }
+        },
+        'dashboard-teacher': async (user) => {
+            const data = await apiRequest(`/dashboard/teacher/${user.user_id}`);
+            if (!data || !data.courses) return;
+
+            const coursesList = document.getElementById('teacher-courses-list');
+            coursesList.innerHTML = '';
+            if(data.courses.length > 0) {
+                data.courses.forEach(c => {
+                    coursesList.innerHTML += `<li class="p-3 rounded-md bg-gray-50 flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold">${c.c_name}</p>
+                            <p class="text-sm text-gray-500">${c.student_count} Students</p>
+                        </div>
+                        <div class="space-x-2">
+                             <button class="upload-material-btn bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 shadow" data-course-id="${c.c_id}" data-course-name="${c.c_name}" data-teacher-id="${c.t_id}">Upload Material</button>
+                             <button class="view-students-btn bg-indigo-500 text-white px-3 py-1 rounded-lg hover:bg-indigo-600 shadow" data-course-id="${c.c_id}" data-course-name="${c.c_name}">View Students</button>
+                        </div>
+                    </li>`;
+                });
+            } else {
+                coursesList.innerHTML = '<li>No courses assigned.</li>';
+            }
+        },
+
+        'reports-management': async () => {
+            const summary = await apiRequest('/report/course_summary');
+            const teachers = await apiRequest('/report/unassigned_teachers');
+            const container = document.getElementById('reports-management');
+            
+            let summaryRows = '';
+            if (summary && summary.length) {
+                summaryRows = summary.map(s => `
+                    <tr class="border-b">
+                        <td class="p-4">${s.d_name}</td>
+                        <td class="p-4">${s.total_courses_offered}</td>
+                        <td class="p-4">${s.total_department_credits}</td>
+                        <td class="p-4">${s.chairperson_name || 'N/A'}</td>
+                    </tr>`).join('');
+            } else {
+                summaryRows = `<tr><td colspan="4" class="p-4 text-center">No department data found.</td></tr>`;
+            }
+
+            let unassignedTeachersList = '';
+            if (teachers && teachers.length) {
+                unassignedTeachersList = teachers.map(t => `<li class="p-2 border-b text-red-600">${t.name} (${t.designation})</li>`).join('');
+            } else {
+                unassignedTeachersList = '<li class="p-2 text-green-600">All teachers are assigned!</li>';
+            }
+
+            container.innerHTML = `
+                <h3 class="text-2xl font-semibold mb-6">Reports & Analytics</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <a href="#unassigned-teachers" class="bg-indigo-500 text-white p-4 rounded-lg shadow hover:bg-indigo-600 text-center">Teachers Not Assigned (${teachers ? teachers.length : 0})</a>
+                    <a href="#student-ranking" class="bg-indigo-500 text-white p-4 rounded-lg shadow hover:bg-indigo-600 text-center">Student Performance Ranking</a>
+                    <a href="#grade-distribution" class="bg-indigo-500 text-white p-4 rounded-lg shadow hover:bg-indigo-600 text-center">Grade Distribution Analysis</a>
+                </div>
+
+                <h4 class="text-xl font-semibold mb-4">Department Course Load Summary</h4>
+                <div class="bg-white rounded-lg shadow overflow-hidden mb-8">
+                    <table class="min-w-full">
+                        <thead class="table-header">
+                            <tr>
+                                <th class="p-4 text-left font-semibold">Department</th>
+                                <th class="p-4 text-left font-semibold">Total Courses</th>
+                                <th class="p-4 text-left font-semibold">Total Credits</th>
+                                <th class="p-4 text-left font-semibold">Faculty</th>
+                            </tr>
+                        </thead>
+                        <tbody>${summaryRows}</tbody>
+                    </table>
+                </div>
+
+                <h4 class="text-xl font-semibold mb-4">Unassigned Teachers (Quick View)</h4>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <ul class="space-y-1">${unassignedTeachersList}</ul>
+                </div>
+                `;
+        },
+
+        'student-ranking': async () => {
+            const courses = await apiRequest('/courses'); // Use all courses to select assessment type
+            const container = document.getElementById('student-ranking');
+            let assessmentOptions = '<option disabled selected value="">Select Assessment Type</option>';
+            // Note: In a real system, you'd fetch unique assessment names from the Grades table.
+            // For simplicity, we hardcode common ones or let the user input.
+            const assessments = ['ISA', 'ESA', 'Mid-Term Exam', 'Final Exam'];
+            assessments.forEach(a => {
+                assessmentOptions += `<option value="${a}">${a}</option>`;
+            });
+
+            container.innerHTML = `
+                <h3 class="text-xl font-semibold mb-6">Student Performance Ranking (Window Function)</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <label class="block text-gray-700">Assessment Type</label>
+                    <select id="ranking-assessment-select" class="w-full mt-1 p-2 border rounded-lg">${assessmentOptions}</select>
+                    <p class="mt-2 text-sm text-gray-500">Note: Data reflects performance across all courses for the selected assessment.</p>
+                </div>
+                <div id="ranking-results">
+                    <p class="text-center text-gray-500">Select an assessment type to view the student ranking.</p>
+                </div>
+            `;
+
+            document.getElementById('ranking-assessment-select').addEventListener('change', async (e) => {
+                const assessmentType = e.target.value;
+                const resultsDiv = document.getElementById('ranking-results');
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Loading ranking...</p>';
+
+                const rankings = await apiRequest(`/report/student_ranking/${assessmentType}`);
+                
+                let content = '';
+                if (rankings && rankings.length) {
+                    let tableRows = rankings.map(r => `
+                        <tr class="border-b ${r.performance_rank == 1 ? 'bg-yellow-50 font-bold' : ''}">
+                            <td class="p-4">${r.performance_rank}</td>
+                            <td class="p-4">${r.name} (${r.s_id})</td>
+                            <td class="p-4">${r.total_enrolled_credits}</td>
+                            <td class="p-4">${r.avg_assessment_marks ? r.avg_assessment_marks.toFixed(2) : 'N/A'}</td>
+                        </tr>`).join('');
+
+                    content = `
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <table class="min-w-full">
+                                <thead class="table-header">
+                                    <tr>
+                                        <th class="p-4 text-left font-semibold">Rank</th>
+                                        <th class="p-4 text-left font-semibold">Student Name</th>
+                                        <th class="p-4 text-left font-semibold">Total Credits</th>
+                                        <th class="p-4 text-left font-semibold">Avg. Marks</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${tableRows}</tbody>
+                            </table>
+                        </div>`;
+                } else {
+                    content = '<p class="text-center bg-white p-4 rounded-lg shadow text-gray-500">No grades found for this assessment type to generate a ranking.</p>';
+                }
+                resultsDiv.innerHTML = content;
+            });
+        },
+
+        'grade-distribution': async () => {
+            const courses = await apiRequest('/courses');
+            const container = document.getElementById('grade-distribution');
+            let courseOptions = '<option disabled selected value="">Select a Course</option>';
+            if (courses && courses.length) {
+                courses.forEach(c => {
+                    courseOptions += `<option value="${c.c_id}">${c.c_name}</option>`;
+                });
+            }
+
+            container.innerHTML = `
+                <h3 class="text-xl font-semibold mb-6">Course Grade Distribution (CTE)</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700">Course</label>
+                            <select id="grade-dist-course-select" class="w-full mt-1 p-2 border rounded-lg">${courseOptions}</select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700">Assessment Type</label>
+                            <input type="text" id="grade-dist-assessment-name" placeholder="e.g., ESA, Mid-Term Exam" class="w-full mt-1 p-2 border rounded-lg">
+                        </div>
+                    </div>
+                    <button id="run-grade-dist-btn" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 shadow w-full">Run Analysis</button>
+                </div>
+                <div id="grade-dist-results">
+                    <p class="text-center text-gray-500">Select a course and enter an assessment name to analyze grade distribution.</p>
+                </div>
+            `;
+
+            document.getElementById('run-grade-dist-btn').addEventListener('click', async () => {
+                const courseId = document.getElementById('grade-dist-course-select').value;
+                const assessmentType = document.getElementById('grade-dist-assessment-name').value;
+                const resultsDiv = document.getElementById('grade-dist-results');
+
+                if (!courseId || !assessmentType) {
+                    alert("Please select a course and enter an assessment name.");
+                    return;
+                }
+
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Analyzing distribution...</p>';
+
+                const stats = await apiRequest(`/report/grade_dist/${courseId}/${assessmentType}`);
+                
+                let content = '';
+                if (stats && stats.c_name) {
+                    content = `
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <div class="p-4 border-b text-lg font-bold">${stats.c_name} (${stats.assessment_type})</div>
+                            <table class="min-w-full">
+                                <tbody>
+                                    <tr><td class="p-4 font-semibold">Total Assessed Students</td><td class="p-4">${stats.total_assessed_students}</td></tr>
+                                    <tr><td class="p-4 font-semibold text-green-600">High Grades (S, A)</td><td class="p-4 text-green-600">${stats.high_grade_count}</td></tr>
+                                    <tr><td class="p-4 font-semibold text-blue-600">Passing Grades (B, C, D, E)</td><td class="p-4 text-blue-600">${stats.passing_grade_count}</td></tr>
+                                    <tr><td class="p-4 font-semibold text-red-600">Failing Grades (F)</td><td class="p-4 text-red-600">${stats.failing_grade_count}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>`;
+                } else {
+                    content = '<p class="text-center bg-white p-4 rounded-lg shadow text-gray-500">No grades found for this course and assessment type.</p>';
+                }
+                resultsDiv.innerHTML = content;
+            });
+        },
+        'students': async () => renderManagementPage('students', ['s_id', 'name', 'enrollment_no', 'email', 'dob']),
+        'teachers': async () => renderManagementPage('teachers', ['t_id', 'name', 'designation', 'department', 'email']),
+        'departments': async () => renderManagementPage('departments', ['d_id', 'd_name']),
+        'courses': async () => renderManagementPage('courses', ['c_id', 'c_name', 'credits', 'department']),
+        'announcements': async () => renderManagementPage('announcements', ['a_id', 'title', 'content', 'date_posted']),
+        'student-grades': async (user) => {
+            const grades = await apiRequest(`/student/${user.user_id}/grades`);
+            const container = document.getElementById('student-grades');
+            let content = `<h3 class="text-xl font-semibold mb-6">My Grades</h3>
+                           <div class="bg-white rounded-lg shadow overflow-hidden"><table class="min-w-full">
+                           <thead class="table-header"><tr>
+                                <th class="p-4 text-left font-semibold">Course</th>
+                                <th class="p-4 text-left font-semibold">Assessment</th>
+                                <th class="p-4 text-left font-semibold">Marks Obtained</th>
+                                <th class="p-4 text-left font-semibold">Total Marks</th>
+                                <th class="p-4 text-left font-semibold">Grade</th>
+                                <th class="p-4 text-left font-semibold">Date</th>
+                           </tr></thead><tbody>`;
+            if (grades && grades.length) {
+                grades.forEach(g => {
+                    content += `<tr class="border-b">
+                        <td class="p-4">${g.c_name}</td><td class="p-4">${g.assessment}</td>
+                        <td class="p-4">${g.marks_obtained || 'N/A'}</td>
+                        <td class="p-4">${g.total_marks}</td>
+                        <td class="p-4 font-bold">${g.grade}</td>
+                        <td class="p-4">${new Date(g.date).toLocaleDateString()}</td>
+                    </tr>`;
+                });
+            } else {
+                content += `<tr><td colspan="6" class="p-4 text-center">No grades found.</td></tr>`;
+            }
+            container.innerHTML = content + '</tbody></table></div>';
+        },
+        'my-materials': async (user) => {
+            // Fetch student's enrolled courses
+            const enrolledCoursesData = await apiRequest(`/dashboard/student/${user.user_id}`);
+            const enrolledCourses = enrolledCoursesData ? enrolledCoursesData.courses : [];
+            const container = document.getElementById('my-materials');
+            
+            // Define the material loading function (robust check for courseId)
+            const loadMaterials = async (courseId) => {
+                const displayArea = document.getElementById('material-display-area');
+                
+                // If the user selects the disabled 'Select a Course' option, or no ID is provided, exit.
+                if (!courseId) { 
+                     displayArea.innerHTML = '<p class="text-center text-gray-500">Select a subject to view available materials.</p>';
+                     return;
+                }
+
+                displayArea.innerHTML = '<p class="text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Loading materials...</p>';
+
+                try {
+                    // API call uses the existing /api/materials/course/<c_id> endpoint
+                    const materials = await apiRequest(`/materials/course/${courseId}`);
+                    
+                    let content = '';
+                    if (materials && materials.length > 0) {
+                        let materialList = materials.map(m => `
+                            <li class="p-4 border-b flex justify-between items-center hover:bg-gray-50">
+                                <div>
+                                    <span class="font-medium">${m.title}</span>
+                                    <span class="text-xs text-gray-500 ml-3">(${m.file_name})</span>
+                                </div>
+                                <a href="/api/materials/download/${m.material_id}" target="_blank" class="text-indigo-600 hover:text-indigo-800 font-medium">
+                                    <i class="fas fa-download mr-1"></i> View/Download
+                                </a>
+                            </li>
+                        `).join('');
+
+                        content = `
+                            <div class="bg-white rounded-lg shadow overflow-hidden">
+                                <ul class="divide-y">${materialList}</ul>
+                            </div>`;
+                    } else {
+                        content = '<p class="text-center bg-white p-4 rounded-lg shadow text-gray-500">No materials uploaded for this subject yet.</p>';
+                    }
+                    displayArea.innerHTML = content;
+                } catch (error) {
+                     displayArea.innerHTML = `<p class="text-center text-red-500 bg-white p-4 rounded-lg shadow">Error fetching materials: ${error.message}</p>`;
+                }
+            };
+            // END loadMaterials function
+
+            // 1. Determine the initial course ID (the first course the student is enrolled in)
+            const initialCourseId = enrolledCourses.length > 0 ? enrolledCourses[0].c_id : null;
+            
+            let courseOptions = '<option disabled value="">Select a Course</option>';
+            if (enrolledCourses.length) {
+                enrolledCourses.forEach(c => {
+                    // 2. Pre-select the first course in the options list
+                    // If initialCourseId is null, no course is pre-selected.
+                    const selected = c.c_id === initialCourseId ? 'selected' : '';
+                    courseOptions += `<option value="${c.c_id}" ${selected}>${c.c_name}</option>`;
+                });
+            }
+
+            // 3. Render the structure
+            container.innerHTML = `
+                <h3 class="text-xl font-semibold mb-6">Course Materials</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <label class="block text-gray-700 font-semibold mb-2">Select Subject</label>
+                    <select id="material-course-select" class="w-full mt-1 p-3 border rounded-lg">${courseOptions}</select>
+                </div>
+                <div id="material-display-area" class="space-y-4">
+                    </div>`;
+            
+            // 4. Attach the listener
+            const courseSelect = document.getElementById('material-course-select');
+            courseSelect.addEventListener('change', (e) => loadMaterials(e.target.value));
+
+            // 5. Manually trigger the load for the pre-selected course
+            if (initialCourseId) {
+                // Trigger the load immediately using the correct ID
+                loadMaterials(initialCourseId);
+            } else {
+                 // Set default empty message if no courses are enrolled
+                 document.getElementById('material-display-area').innerHTML = '<p class="text-center text-gray-500">No courses available or you are not enrolled in any.</p>';
+            }
+        },
+    };
+    async function renderManagementPage(type, columns) {
+        const data = await apiRequest(`/${type}`);
+        const container = document.getElementById(type);
+        const typeTitle = type.charAt(0).toUpperCase() + type.slice(1);
+
+        let tableHeaders = columns.map(col => `<th class="p-4 text-left font-semibold">${col.replace('_', ' ').toUpperCase()}</th>`).join('');
+        
+        let tableRows = `<tr><td colspan="${columns.length + 1}" class="p-4 text-center">No data found.</td></tr>`;
+        if (data && data.length) {
+            tableRows = data.map(item => {
+                const id_col = Object.keys(item)[0];
+                let cells = columns.map(col => `<td class="p-4">${item[col] || 'N/A'}</td>`).join('');
+                return `<tr class="border-b" data-id="${item[id_col]}">
+                            ${cells}
+                            <td class="p-4">
+                                <button class="text-red-500 hover:underline delete-btn" data-type="${type}" data-id="${item[id_col]}">Delete</button>
+                            </td>
+                        </tr>`;
+            }).join('');
+        }
+
+        container.innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold">Manage ${typeTitle}</h3>
+                <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow add-btn" data-modal="add-${type.slice(0, -1)}-modal">+ Add ${typeTitle.slice(0, -1)}</button>
+            </div>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full">
+                    <thead class="table-header"><tr>${tableHeaders}<th class="p-4 text-left font-semibold">ACTIONS</th></tr></thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>`;
+    }
+
+
+    const showPage = (hash) => {
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        if (!user) return; 
+
+        const targetId = hash ? hash.substring(1) : rolesConfig[user.role].dashboardId;
+        
+        document.querySelectorAll('.page').forEach(page => page.classList.toggle('active', page.id === targetId));
+        document.querySelectorAll('.sidebar-link').forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${targetId}`));
+        
+        const activeLink = sidebarNav.querySelector(`.sidebar-link[href="#${targetId}"] span`);
+        if (activeLink) pageTitle.textContent = activeLink.textContent;
+        
+        if (pageLoaders[targetId]) {
+            pageLoaders[targetId](user);
+        } else {
+             const container = document.getElementById(targetId);
+             if(container) container.innerHTML = `<h3 class="text-xl font-semibold">Coming Soon</h3><p>${targetId} page is under construction.</p>`;
+        }
+    };
+    
+    function showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'flex';
+            if (modalId === 'add-student-modal' || modalId === 'add-teacher-modal' || modalId === 'add-course-modal') {
+                populateDepartmentDropdowns();
+            }
+            if (modalId === 'add-course-modal') {
+                populateTeacherDropdown();
+            }
+        }
+    }
+
+    function hideModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    async function populateDepartmentDropdowns() {
+        const departments = await apiRequest('/departments');
+        if (departments) {
+            const studentSelect = document.getElementById('student-dept-select');
+            const teacherSelect = document.getElementById('teacher-dept-select');
+            const courseSelect = document.getElementById('course-dept-select');
+            let options = '<option disabled selected>Select Department</option>';
+            departments.forEach(d => {
+                options += `<option value="${d.d_id}">${d.d_name}</option>`;
+            });
+            if (studentSelect) studentSelect.innerHTML = options;
+            if (teacherSelect) teacherSelect.innerHTML = options;
+            if (courseSelect) courseSelect.innerHTML = options;
+        }
+    }
+
+    async function populateTeacherDropdown() {
+        const teachers = await apiRequest('/teachers');
+        if (teachers) {
+            const teacherSelect = document.getElementById('course-teacher-select');
+            let options = '<option disabled selected>Select Teacher</option>';
+            teachers.forEach(t => {
+                options += `<option value="${t.t_id}">${t.name}</option>`;
+            });
+            if (teacherSelect) teacherSelect.innerHTML = options;
+        }
+    }
+
+    // --- Event Listeners ---
+    function setupEventListeners() {
+        loginForm.addEventListener('submit', handleLogin);
+        logoutButton.addEventListener('click', handleLogout);
+        window.addEventListener('hashchange', () => showPage(window.location.hash));
+
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('.delete-btn')) {
+                handleDelete(e.target);
+            }
+            if (e.target.matches('.add-btn')) {
+                showModal(e.target.dataset.modal);
+            }
+            if(e.target.id === 'submit-grievance-btn') {
+                showModal('add-grievance-modal');
+            }
+            if (e.target.matches('.upload-material-btn')) {
+                handleUploadMaterialClick(e.target);
+            }
+            if (e.target.matches('.enroll-btn')) {
+                handleEnroll(e.target);
+            }
+            if (e.target.matches('.view-students-btn')) {
+                handleViewStudents(e.target);
+            }
+            if (e.target.matches('.resolve-btn')) {
+                handleResolveGrievance(e.target);
+            }
+            if (e.target.matches('.modal-cancel-btn')) {
+                const modal = e.target.closest('.modal');
+                if (modal) hideModal(modal.id);
+            }
+            if (e.target.closest('.accordion-toggle')) {
+                const button = e.target.closest('.accordion-toggle');
+                const content = button.nextElementSibling;
+                const icon = button.querySelector('.accordion-icon');
+                content.classList.toggle('hidden');
+                icon.classList.toggle('rotate-180');
+            }
+        });
+
+        document.getElementById('add-student-form').addEventListener('submit', handleAddItem);
+        document.getElementById('add-teacher-form').addEventListener('submit', handleAddItem);
+        document.getElementById('add-course-form').addEventListener('submit', handleAddItem);
+        document.getElementById('add-department-form').addEventListener('submit', handleAddItem);
+        document.getElementById('upload-material-form').addEventListener('submit', handleMaterialUpload);
+        document.getElementById('add-announcement-form').addEventListener('submit', handleAddItem);
+        document.getElementById('add-grievance-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            const user = JSON.parse(sessionStorage.getItem('user'));
+            data.user_id = user.user_id;
+
+            const result = await apiRequest('/grievances', 'POST', data);
+            if (result && result.success) {
+                alert('Grievance submitted successfully.');
+                form.reset();
+                hideModal('add-grievance-modal');
+                showPage(window.location.hash);
+            } else {
+                alert(`Failed to submit: ${(result && result.message) || 'Server error'}`);
+            }
+        });
+    }
+
+    // --- Event Handlers ---
+    async function handleLogin(e) {
+        e.preventDefault();
+        loginError.classList.add('hidden');
+        const data = await apiRequest('/login', 'POST', {
+            email: email.value,
+            password: password.value
+        });
+        if (data && data.success) {
+            sessionStorage.setItem('user', JSON.stringify(data.user));
+            setupPortalForUser(data.user);
+        } else {
+            loginError.textContent = (data && data.message) || 'Login failed!';
+            loginError.classList.remove('hidden');
+        }
+    }
+
+    function handleLogout() {
+        sessionStorage.removeItem('user');
+        window.location.hash = '';
+        portalContainer.classList.add('hidden');
+        loginModal.classList.remove('hidden');
+    }
+    
+    async function handleEnroll(button) {
+        const c_id = button.dataset.courseId;
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        const s_id = user.user_id;
+
+        if (confirm(`Are you sure you want to enroll in this course?`)) {
+            const result = await apiRequest('/student/enroll', 'POST', { s_id, c_id });
+            if (result && result.success) {
+                alert(result.message);
+                button.textContent = 'Enrolled';
+                button.disabled = true;
+                button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                button.classList.add('bg-gray-400');
+            } else {
+                alert(`Enrollment failed: ${(result && result.message) || 'Server error'}`);
+            }
+        }
+    }
+    
+    async function handleViewStudents(button) {
+        const courseId = button.dataset.courseId;
+        const courseName = button.dataset.courseName;
+        
+        const students = await apiRequest(`/course/${courseId}/students`);
+        
+        const modalTitle = document.getElementById('view-students-title');
+        const studentListDiv = document.getElementById('view-students-list');
+
+        modalTitle.textContent = `Enrolled Students in ${courseName}`;
+        studentListDiv.innerHTML = '';
+
+        if (students && students.length > 0) {
+            let listContent = '<ul class="space-y-2">';
+            students.forEach(student => {
+                listContent += `<li class="p-2 bg-gray-100 rounded">${student.name} (ID: ${student.s_id})</li>`;
+            });
+            listContent += '</ul>';
+            studentListDiv.innerHTML = listContent;
+        } else {
+            studentListDiv.innerHTML = '<p class="text-center text-gray-500">No students are currently enrolled in this course.</p>';
+        }
+
+        showModal('view-students-modal');
+    }
+    
+    async function handleResolveGrievance(button) {
+        const grievanceId = button.dataset.grievanceId;
+        if (confirm('Are you sure you want to mark this grievance as resolved?')) {
+            const result = await apiRequest(`/grievances/resolve/${grievanceId}`, 'PUT');
+            if (result && result.success) {
+                alert('Grievance marked as resolved.');
+                showPage(window.location.hash); // Refresh the page to show the updated status
+            }
+        }
+    }
+    function handleUploadMaterialClick(button) {
+        const courseId = button.dataset.courseId;
+        const courseName = button.dataset.courseName;
+        const teacherId = button.dataset.teacherId;
+        
+        document.getElementById('upload-material-title').textContent = `Upload Material for ${courseName}`;
+        document.getElementById('upload-c-id').value = courseId;
+        document.getElementById('upload-t-id').value = teacherId;
+        
+        showModal('upload-material-modal');
+    }
+
+    async function handleMaterialUpload(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        
+        // Note: For file uploads, we use fetch with the raw FormData object
+        const result = await fetch('/api/materials/upload', {
+            method: 'POST',
+            body: formData
+        }).then(res => res.json()).catch(err => {
+            console.error(err);
+            return { success: false, message: 'Network or server error during upload.' };
+        });
+
+        if (result && result.success) {
+            alert(result.message);
+            form.reset();
+            hideModal('upload-material-modal');
+            showPage(window.location.hash); // Refresh the teacher dashboard/page
+        } else {
+            alert(`Upload failed: ${result.message}`);
+        }
+    }
+
+    async function loadStudentsForAttendance() {
+        const courseSelect = document.getElementById('attendance-course-select');
+        const studentListDiv = document.getElementById('attendance-student-list');
+        const courseId = courseSelect.value;
+
+        if (!courseId) {
+            studentListDiv.innerHTML = '<p class="text-center text-gray-500">Please select a course to see the student list.</p>';
+            return;
+        }
+
+        const students = await apiRequest(`/course/${courseId}/students`);
+        if (students && students.length > 0) {
+            let content = `<form id="attendance-form"><table class="min-w-full mt-4">
+                <thead class="table-header"><tr>
+                    <th class="p-4 text-left font-semibold">Student Name</th>
+                    <th class="p-4 text-left font-semibold">Status</th>
+                </tr></thead><tbody>`;
+            students.forEach(student => {
+                content += `<tr class="border-b" data-student-id="${student.s_id}">
+                    <td class="p-4">${student.name}</td>
+                    <td class="p-4">
+                        <label class="mr-4"><input type="radio" name="status_${student.s_id}" value="Present" required> Present</label>
+                        <label><input type="radio" name="status_${student.s_id}" value="Absent"> Absent</label>
+                    </td></tr>`;
+            });
+            content += `</tbody></table><div class="mt-6 flex justify-end">
+                <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 shadow">Submit Attendance</button>
+                </div></form>`;
+            studentListDiv.innerHTML = content;
+            document.getElementById('attendance-form').addEventListener('submit', handleAttendanceSubmit);
+        } else {
+            studentListDiv.innerHTML = '<p class="text-center mt-4 text-gray-500">No students are enrolled in this course.</p>';
+        }
+    }
+
+    async function handleAttendanceSubmit(e) {
+        e.preventDefault();
+        const courseId = document.getElementById('attendance-course-select').value;
+        const date = document.getElementById('attendance-date').value;
+        const studentRows = document.querySelectorAll('#attendance-student-list tbody tr');
+
+        if (!date) { alert('Please select a date.'); return; }
+
+        const attendanceRecords = [];
+        studentRows.forEach(row => {
+            const s_id = row.dataset.studentId;
+            const selectedStatus = row.querySelector(`input[name="status_${s_id}"]:checked`);
+            if (selectedStatus) {
+                attendanceRecords.push({ s_id, c_id: courseId, date, status: selectedStatus.value });
+            }
+        });
+
+        if (attendanceRecords.length !== studentRows.length) {
+            alert('Please mark attendance for all students.'); return;
+        }
+        
+        const result = await apiRequest('/attendance', 'POST', attendanceRecords);
+        if (result && result.success) { alert(result.message); }
+    }
+
+    async function loadStudentsForGrades() {
+        const courseSelect = document.getElementById('grades-course-select');
+        const studentListDiv = document.getElementById('grades-student-list');
+        const courseId = courseSelect.value;
+
+        if (!courseId) {
+            studentListDiv.innerHTML = '<p class="text-center text-gray-500">Please select a course to see the student list.</p>';
+            return;
+        }
+
+        const students = await apiRequest(`/course/${courseId}/students`);
+        if (students && students.length > 0) {
+            let content = `<form id="grades-form"><table class="min-w-full mt-4">
+                <thead class="table-header"><tr>
+                    <th class="p-4 text-left font-semibold">Student Name</th>
+                    <th class="p-4 text-left font-semibold">Marks Obtained</th>
+                    <th class="p-4 text-left font-semibold">Total Marks</th>
+                </tr></thead><tbody>`;
+            students.forEach(student => {
+                content += `<tr class="border-b" data-student-id="${student.s_id}">
+                    <td class="p-4">${student.name}</td>
+                    <td class="p-4"><input type="number" name="marks_obtained_${student.s_id}" class="w-full border p-1 rounded" placeholder="e.g. 85" required></td>
+                    <td class="p-4"><input type="number" name="total_marks_${student.s_id}" class="w-full border p-1 rounded" placeholder="e.g. 100" required></td>
+                    </tr>`;
+            });
+            content += `</tbody></table><div class="mt-6 flex justify-end">
+                <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 shadow">Submit Grades</button>
+                </div></form>`;
+            studentListDiv.innerHTML = content;
+            document.getElementById('grades-form').addEventListener('submit', handleGradesSubmit);
+        } else {
+            studentListDiv.innerHTML = '<p class="text-center mt-4 text-gray-500">No students are enrolled in this course.</p>';
+        }
+    }
+
+    async function handleGradesSubmit(e) {
+        e.preventDefault();
+        const courseId = document.getElementById('grades-course-select').value;
+        const assessment = document.getElementById('grades-assessment-name').value;
+        const date = document.getElementById('grades-date').value;
+        const studentRows = document.querySelectorAll('#grades-student-list tbody tr');
+
+        if (!assessment || !date) { alert('Please provide an assessment name and date.'); return; }
+
+        const gradeRecords = [];
+        let formIsValid = true;
+        studentRows.forEach(row => {
+            const s_id = row.dataset.studentId;
+            const marks_obtained = row.querySelector(`input[name="marks_obtained_${s_id}"]`).value;
+            const total_marks = row.querySelector(`input[name="total_marks_${s_id}"]`).value;
+            if (marks_obtained && total_marks) {
+                gradeRecords.push({ s_id, c_id: courseId, assessment, date, marks_obtained, total_marks });
+            } else {
+                formIsValid = false;
+            }
+        });
+
+        if (!formIsValid) { alert('Please enter marks for all students.'); return; }
+        
+        const result = await apiRequest('/grades', 'POST', gradeRecords);
+        if (result && result.success) { 
+            alert(result.message);
+            document.getElementById('grades-student-list').innerHTML = '<p class="text-center text-gray-500">Grades submitted successfully. Select a course to enter more.</p>';
+        }
+    }
+
+    async function handleAddItem(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formIdPrefix = form.id.replace('add-', '').replace('-form', '');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        let apiType = formIdPrefix + 's';
+    
+        if (formIdPrefix === 'announcement') {
+            const user = JSON.parse(sessionStorage.getItem('user'));
+            data.user_id = user.user_id;
+        }
+
+        const result = await apiRequest(`/${apiType}`, 'POST', data);
+        if (result && result.success) {
+            alert(`${formIdPrefix.charAt(0).toUpperCase() + formIdPrefix.slice(1)} added successfully.`);
+            form.reset();
+            hideModal(`add-${formIdPrefix}-modal`);
+            showPage(window.location.hash);
+        } else {
+            alert(`Failed to add: ${(result && result.message) || 'Server error'}`);
+        }
+    }
+
+
+    async function handleDelete(button) {
+        const type = button.dataset.type;
+        const id = button.dataset.id;
+        if (confirm(`Are you sure you want to delete this item?`)) {
+            const result = await apiRequest(`/${type}/${id}`, 'DELETE');
+            if (result && result.success) {
+                alert('Item deleted successfully.');
+                showPage(window.location.hash);
+            } else {
+                 alert(`Failed to delete: ${(result && result.message) || 'Server error'}`);
+            }
+        }
+    }
+
+
+    // --- Initialization ---
+    function renderSidebar(role) {
+        sidebarNav.innerHTML = '';
+        const roleLinks = rolesConfig[role].links;
+        roleLinks.forEach(linkInfo => {
+            const link = document.createElement('a');
+            link.href = linkInfo.href;
+            link.className = 'sidebar-link flex items-center px-4 py-2 rounded-lg';
+            link.innerHTML = `<i class="fas ${linkInfo.icon} w-6"></i><span class="ml-3">${linkInfo.text}</span>`;
+            sidebarNav.appendChild(link);
+        });
+    }
+
+    function setupPortalForUser(user) {
+        if (!rolesConfig[user.role]) {
+            alert('Invalid user role detected!');
+            return;
+        }
+        welcomeUserSpan.textContent = `Welcome, ${user.email}`;
+        renderSidebar(user.role);
+
+        loginModal.classList.add('hidden');
+        portalContainer.classList.remove('hidden');
+
+        const dashboardHash = `#${rolesConfig[user.role].dashboardId}`;
+        if (window.location.hash === dashboardHash) {
+             showPage(dashboardHash);
+        } else {
+             window.location.hash = dashboardHash;
+        }
+    }
+
+    function init() {
+        const storedUser = sessionStorage.getItem('user');
+        if (storedUser) {
+            setupPortalForUser(JSON.parse(storedUser));
+        }
+        setupEventListeners();
+    }
+    init();
+});
+</script>
+<div id="upload-material-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+        <h3 id="upload-material-title" class="text-2xl font-bold mb-6">Upload Material</h3>
+        <form id="upload-material-form" enctype="multipart/form-data">
+            <input type="hidden" name="c_id" id="upload-c-id">
+            <input type="hidden" name="t_id" id="upload-t-id">
+            <div class="grid grid-cols-1 gap-4">
+                <input class="border p-2 rounded-lg" name="title" placeholder="Material Title (e.g., Week 5 Slides)" required>
+                <input type="file" class="border p-2 rounded-lg" name="file" accept="application/pdf" required>
+            </div>
+            <div class="mt-8 flex justify-end space-x-4">
+                <button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Upload Material</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>
