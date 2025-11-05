@@ -91,6 +91,9 @@
             </header>
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
                 <div id="announcements-student" class="page"></div> <!-- <-- NEW PAGE DIV -->
+                <div id="grade-distribution" class="page"></div>
+                <div id="high-attendance-students" class="page"></div> <!-- ADD THIS DIV -->
+                <div id="teacher-grades" class="page"></div>
                 <div id="student-grades" class="page"></div>
                 <div id="reports-management" class="page"></div>
                 <div id="unassigned-teachers" class="page"></div>
@@ -250,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 { href: '#courses', icon: 'fa-book', text: 'Courses' },
                 { href: '#reports-management', icon: 'fa-chart-pie', text: 'Reports & Analytics' }, // <-- NEW
                 { href: '#announcements', icon: 'fa-bullhorn', text: 'Announcements' },
-                { href: '#payments', icon: 'fa-money-bill-wave', text: 'Payments' },
+                /*{ href: '#payments', icon: 'fa-money-bill-wave', text: 'Payments' },*/
                 { href: '#grievances', icon: 'fa-exclamation-circle', text: 'Grievances' }
             ]
         }
@@ -280,6 +283,69 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Page Loaders & Renderers ---
     const pageLoaders = {
+        'high-attendance-students': async () => {
+            const container = document.getElementById('high-attendance-students');
+            
+            container.innerHTML = `
+                <h3 class="text-xl font-semibold mb-6">Students with Low Attendance (Nested Subquery)</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <label class="block text-gray-700 font-semibold">Minimum Attendance Percentage Required</label>
+                    <div class="flex space-x-4 mt-1">
+                        <input type="number" id="min-attendance-input" class="w-24 p-2 border rounded-lg text-center" value="75" min="0" max="100">
+                        <span class="text-2xl font-bold self-center">%</span>
+                        <button id="run-attendance-report-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 shadow flex-1">
+                            Run Report
+                        </button>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">Enter the minimum overall average attendance percent required across all their courses.</p>
+                </div>
+                <div id="high-attendance-results">
+                    <p class="text-center text-gray-500">Click "Run Report" to view students meeting the criteria.</p>
+                </div>
+            `;
+
+            document.getElementById('run-attendance-report-btn').addEventListener('click', async () => {
+                const minAttendance = document.getElementById('min-attendance-input').value;
+                const resultsDiv = document.getElementById('high-attendance-results');
+
+                if (minAttendance === "" || parseFloat(minAttendance) < 0 || parseFloat(minAttendance) > 100) {
+                    alert("Please enter a valid percentage between 0 and 100.");
+                    return;
+                }
+
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Generating report...</p>';
+
+                // API call to the new endpoint
+                const students = await apiRequest(`/report/high_attendance/${minAttendance}`);
+                
+                let content = '';
+                if (students && students.length) {
+                    let tableRows = students.map((s, index) => `
+                        <tr class="border-b">
+                            <td class="p-4">${index + 1}</td>
+                            <td class="p-4">${s.name} (${s.s_id})</td>
+                            <td class="p-4 font-bold text-green-600">${s.overall_avg_attendance_percent}%</td>
+                        </tr>`).join('');
+
+                    content = `
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <table class="min-w-full">
+                                <thead class="table-header">
+                                    <tr>
+                                        <th class="p-4 text-left font-semibold">Rank</th>
+                                        <th class="p-4 text-left font-semibold">Student Name</th>
+                                        <th class="p-4 text-left font-semibold">Avg. Attendance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${tableRows}</tbody>
+                            </table>
+                        </div>`;
+                } else {
+                    content = `<p class="text-center bg-white p-4 rounded-lg shadow text-gray-500">No students found with an overall attendance average of ${minAttendance}% or higher.</p>`;
+                }
+                resultsDiv.innerHTML = content;
+            });
+        },
         'announcements-student': async () => {
             const announcements = await apiRequest('/announcements');
             const container = document.getElementById('announcements-student');
@@ -784,10 +850,11 @@ document.addEventListener('DOMContentLoaded', function() {
             container.innerHTML = `
                 <h3 class="text-2xl font-semibold mb-6">Reports & Analytics</h3>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     <a href="#unassigned-teachers" class="bg-indigo-500 text-white p-4 rounded-lg shadow hover:bg-indigo-600 text-center">Teachers Not Assigned (${teachers ? teachers.length : 0})</a>
                     <a href="#student-ranking" class="bg-indigo-500 text-white p-4 rounded-lg shadow hover:bg-indigo-600 text-center">Student Performance Ranking</a>
                     <a href="#grade-distribution" class="bg-indigo-500 text-white p-4 rounded-lg shadow hover:bg-indigo-600 text-center">Grade Distribution Analysis</a>
+                    <a href="#high-attendance-students" class="bg-indigo-500 text-white p-4 rounded-lg shadow hover:bg-indigo-600 text-center">Low Attendance Students</a> <!-- ADDED NEW BUTTON -->
                 </div>
 
                 <h4 class="text-xl font-semibold mb-4">Course Load and Faculty Assignment</h4>
@@ -814,7 +881,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         'student-ranking': async () => {
             // Placeholder: In a real system, you'd fetch unique assessment names.
-            // For this project, we hardcode common assessment names.
             const container = document.getElementById('student-ranking');
             let assessmentOptions = '<option disabled selected value="">Select Assessment Type</option>';
             const assessments = ['ISA', 'ESA', 'Mid-Term Exam', 'Final Exam'];
@@ -843,13 +909,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const rankings = await apiRequest(`/report/student_ranking/${assessmentType}`);
                 
                 let content = '';
-                if (rankings && rankings.length && !rankings.error) {
+                // Check if rankings is an array AND has length AND doesn't have an error key
+                if (rankings && Array.isArray(rankings) && rankings.length > 0) { 
                     let tableRows = rankings.map(r => `
                         <tr class="border-b ${r.performance_rank == 1 ? 'bg-yellow-50 font-bold' : ''}">
                             <td class="p-4">${r.performance_rank}</td>
                             <td class="p-4">${r.name} (${r.s_id})</td>
-                            <td class="p-4">${r.total_enrolled_credits}</td>
-                            <td class="p-4">${r.avg_assessment_marks ? r.avg_assessment_marks.toFixed(2) : 'N/A'}</td>
+                            <td class="p-4">${r.total_enrolled_credits || '0'}</td>
+                            <td class="p-4">${r.avg_assessment_marks ? parseFloat(r.avg_assessment_marks).toFixed(2) : 'N/A'}</td>
                         </tr>`).join('');
 
                     content = `
@@ -885,6 +952,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     courseOptions += `<option value="${c.c_id}">${c.c_name}</option>`;
                 });
             }
+
+            
 
             container.innerHTML = `
                 <h3 class="text-xl font-semibold mb-6">Course Grade Distribution (CTE)</h3>
@@ -936,6 +1005,71 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>`;
                 } else {
                     content = '<p class="text-center bg-white p-4 rounded-lg shadow text-gray-500">No grades found for this course and assessment type.</p>';
+                }
+                resultsDiv.innerHTML = content;
+            });
+        },
+        'high-attendance-students': async () => {
+            const container = document.getElementById('high-attendance-students');
+            
+            container.innerHTML = `
+                <h3 class="text-xl font-semibold mb-6">Students with Low Attendance (Nested Subquery)</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <label class="block text-gray-700 font-semibold">Minimum Attendance Percentage Required</label>
+                    <div class="flex space-x-4 mt-1">
+                        <input type="number" id="min-attendance-input" class="w-24 p-2 border rounded-lg text-center" value="75" min="0" max="100">
+                        <span class="text-2xl font-bold self-center">%</span>
+                        <button id="run-attendance-report-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 shadow flex-1">
+                            Run Report
+                        </button>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">Enter the minimum overall average attendance percent required across all their courses.</p>
+                </div>
+                <div id="high-attendance-results">
+                    <p class="text-center text-gray-500">Click "Run Report" to view students meeting the criteria.</p>
+                </div>
+            `;
+
+            document.getElementById('run-attendance-report-btn').addEventListener('click', async () => {
+                const minAttendance = document.getElementById('min-attendance-input').value;
+                const resultsDiv = document.getElementById('high-attendance-results');
+
+                if (minAttendance === "" || parseFloat(minAttendance) < 0 || parseFloat(minAttendance) > 100) {
+                    alert("Please enter a valid percentage between 0 and 100.");
+                    return;
+                }
+
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Generating report...</p>';
+
+                // API call uses the string value, which the backend now explicitly handles
+                const students = await apiRequest(`/report/high_attendance/${minAttendance}`);
+                
+                let content = '';
+                if (students && Array.isArray(students) && students.length > 0) {
+                    let tableRows = students.map((s, index) => `
+                        <tr class="border-b">
+                            <td class="p-4">${index + 1}</td>
+                            <td class="p-4">${s.name} (${s.s_id})</td>
+                            <td class="p-4 font-bold text-green-600">${s.overall_avg_attendance_percent}%</td>
+                        </tr>`).join('');
+
+                    content = `
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <table class="min-w-full">
+                                <thead class="table-header">
+                                    <tr>
+                                        <th class="p-4 text-left font-semibold">Sl. No</th>
+                                        <th class="p-4 text-left font-semibold">Student Name</th>
+                                        <th class="p-4 text-left font-semibold">Avg. Attendance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${tableRows}</tbody>
+                            </table>
+                        </div>`;
+                } else if (students && students.error) {
+                    content = `<p class="text-center bg-white p-4 rounded-lg shadow text-red-500">Database Error: ${students.error}. Check your procedure definition.</p>`;
+                } else {
+                    content = `<p class="text-center bg-white p-4 rounded-lg shadow text-gray-500">No students found with an overall attendance average of ${minAttendance}% or higher.</p>`;
                 }
                 resultsDiv.innerHTML = content;
             });
@@ -1065,13 +1199,29 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById(type);
         const typeTitle = type.charAt(0).toUpperCase() + type.slice(1);
 
-        let tableHeaders = columns.map(col => `<th class="p-4 text-left font-semibold">${col.replace('_', ' ').toUpperCase()}</th>`).join('');
+        // Define column headers dynamically. If rendering 'courses', add 'ENROLLED' column.
+        let displayColumns = [...columns];
+        if (type === 'courses') {
+             // Add student_count column dynamically only for the courses table
+             displayColumns.push('student_count');
+        }
+
+        let tableHeaders = displayColumns.map(col => `<th class="p-4 text-left font-semibold">${col.replace('_', ' ').toUpperCase()}</th>`).join('');
+        if (type === 'courses') {
+            tableHeaders = tableHeaders.replace('STUDENT COUNT', 'ENROLLED STUDENTS');
+        }
         
-        let tableRows = `<tr><td colspan="${columns.length + 1}" class="p-4 text-center">No data found.</td></tr>`;
+        let tableRows = `<tr><td colspan="${columns.length + 2}" class="p-4 text-center">No data found.</td></tr>`;
         if (data && data.length) {
             tableRows = data.map(item => {
                 const id_col = Object.keys(item)[0];
                 let cells = columns.map(col => `<td class="p-4">${item[col] || 'N/A'}</td>`).join('');
+                
+                // Add the student count cell specifically for the courses table
+                if (type === 'courses') {
+                    cells += `<td class="p-4 font-bold text-indigo-600">${item.student_count || 0}</td>`;
+                }
+
                 return `<tr class="border-b" data-id="${item[id_col]}">
                             ${cells}
                             <td class="p-4">
@@ -1080,6 +1230,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         </tr>`;
             }).join('');
         }
+
+        // Adjust colspan for the final table based on whether the student count column was added
+        const finalColspan = type === 'courses' ? columns.length + 2 : columns.length + 1;
+
 
         container.innerHTML = `
             <div class="flex justify-between items-center mb-6">

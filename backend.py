@@ -282,27 +282,36 @@ def get_items(item_type):
 
     if item_type == 'courses':
         s_id = request.args.get('s_id')  # Get student ID from query parameter for enrollment check
+        
+        # Subquery to count enrolled students for all courses
+        enrollment_count_subquery = """
+            (SELECT COUNT(*) FROM Student_Courses sc WHERE sc.c_id = c.c_id) AS student_count
+        """
+
         if s_id:
             # Student course listing: Check enrollment status: 1 if enrolled, 0 otherwise
-            query = """
+            query = f"""
                 SELECT c.c_id, c.c_name, c.credits, d.d_name as department, t.name as teacher_name, c.t_id,
-                (CASE WHEN sc.s_id IS NOT NULL THEN 1 ELSE 0 END) as is_enrolled
+                (CASE WHEN sc.s_id IS NOT NULL THEN 1 ELSE 0 END) as is_enrolled,
+                {enrollment_count_subquery}  -- Include student count for all users
                 FROM Courses c
                 LEFT JOIN Departments d ON c.d_id = d.d_id
-                LEFT JOIN Teachers t ON c.t_id = t.t_id  -- **NEW JOIN**
+                LEFT JOIN Teachers t ON c.t_id = t.t_id
                 LEFT JOIN Student_Courses sc ON c.c_id = sc.c_id AND sc.s_id = %s
             """
             cursor.execute(query, (s_id,))
         else:
             # General course listing for Chairperson/Management
-            query = """
-                SELECT c.c_id, c.c_name, c.credits, d.d_name as department, t.name as teacher_name, c.t_id
+            query = f"""
+                SELECT c.c_id, c.c_name, c.credits, d.d_name as department, t.name as teacher_name, c.t_id,
+                {enrollment_count_subquery} -- Include student count
                 FROM Courses c 
                 LEFT JOIN Departments d ON c.d_id = d.d_id
-                LEFT JOIN Teachers t ON c.t_id = t.t_id  -- **NEW JOIN**
+                LEFT JOIN Teachers t ON c.t_id = t.t_id
             """
             cursor.execute(query)
     else:
+        # ... (rest of the original 'else' logic for other item_types)
         queries = {
             'students': "SELECT s.s_id, s.name, s.enrollment_no, u.email, s.dob FROM Students s JOIN Users u ON s.s_id = u.user_id",
             'teachers': "SELECT t.t_id, t.name, t.designation, d.d_name as department, u.email FROM Teachers t JOIN Users u ON t.t_id = u.user_id LEFT JOIN Departments d ON t.d_id = d.d_id",
@@ -312,6 +321,7 @@ def get_items(item_type):
             'attendance/all': "SELECT a.a_id, s.name as student_name, c.c_name, a.date, a.status FROM Attendance a JOIN Students s ON a.s_id = s.s_id JOIN Courses c ON a.c_id = c.c_id ORDER BY a.date DESC"
         }
         cursor.execute(queries[item_type])
+
 
     items = cursor.fetchall()
     cursor.close()
@@ -505,28 +515,43 @@ def get_department_course_summary():
     cursor.close()
     return jsonify(summary)
 
-@app.route('/api/report/high_attendance/<float:min_att>', methods=['GET'])
-def get_high_attendance_students(min_att):
-    """Calls GetStudentsHighOverallAttendance_Nested Stored Procedure."""
+@app.route('/api/report/high_attendance/<string:min_att_str>', methods=['GET'])
+def get_high_attendance_students(min_att_str):
+    """
+    Calls the Nested Stored Procedure. 
+    NOTE: The UI input is used as the threshold, regardless of whether 
+    the underlying procedure is 'High' or 'Below' (now using 'Below').
+    """
     db, err = get_db()
     if err: return jsonify([]), 500
-    # Must use cursor=False for CALL to return results
     cursor = db.cursor() 
-    # 2. Calls the Nested Subquery SP
-    # Flask passes min_att as a Python float, which MySQL handles correctly
-    query = "CALL GetStudentsHighOverallAttendance_Nested(%s)"
-    cursor.execute(query, (min_att,))
     
-    # Fetch all results from the procedure
-    results = []
-    # Fetch column names
-    columns = [col[0] for col in cursor.description]
-    # Fetch data rows
-    for row in cursor.fetchall():
-        results.append(dict(zip(columns, row)))
+    try:
+        # Convert the string parameter to a float
+        min_att = float(min_att_str) 
+    except ValueError:
+        return jsonify({'error': 'Invalid attendance percentage format provided.'}), 400
+    
+    # 🌟 CRITICAL CHANGE: Calling the new stored procedure name
+    query = "CALL GetStudentsBelowAttendanceMax_Nested(%s)"
+    
+    try:
+        cursor.execute(query, (min_att,))
         
-    cursor.close()
-    return jsonify(results)
+        results = []
+        columns = [col[0] for col in cursor.description]
+        
+        for row in cursor.fetchall():
+            results.append(dict(zip(columns, row)))
+            
+        cursor.close()
+        return jsonify(results)
+        
+    except mysql.connector.Error as e:
+        print(f"MySQL Error in attendance SP call: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if cursor: cursor.close()
 
 @app.route('/api/report/grade_dist/<string:c_id>/<string:assessment>', methods=['GET'])
 def get_grade_distribution_stats(c_id, assessment):
@@ -573,7 +598,8 @@ def get_student_assessment_ranking(assessment):
     """Calls GetStudentAssessmentRanking Stored Procedure (Window Function)."""
     db, err = get_db()
     if err: return jsonify([]), 500
-    cursor = db.cursor() # NOTE: Using unbuffered cursor for CALL
+    # Use unbuffered cursor for stored procedure call
+    cursor = db.cursor() 
     
     query = "CALL GetStudentAssessmentRanking(%s)"
     
@@ -592,11 +618,10 @@ def get_student_assessment_ranking(assessment):
         return jsonify(results)
         
     except mysql.connector.Error as e:
-        # Crucial for debugging: log and return DB errors
+        # Log and return a specific JSON error message
         print(f"MySQL Error during ranking SP call: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
-        # Ensure cursor is always closed
         if cursor: cursor.close()
 # TEACHER FEATURES - New endpoint to fetch attendance history by course
 @app.route('/api/attendance/course/<string:c_id>/history', methods=['GET'])
