@@ -161,7 +161,21 @@ CREATE TABLE `User_Audit_Log` (
   KEY `user_id_idx` (`user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-
+DROP TABLE IF EXISTS `Course_Materials`;
+CREATE TABLE `Course_Materials` (
+  `material_id` INT NOT NULL AUTO_INCREMENT,
+  `c_id` VARCHAR(10) NOT NULL,
+  `title` VARCHAR(100) NOT NULL,
+  `file_content` LONGBLOB NOT NULL, -- Storing the file content as BLOB
+  `file_name` VARCHAR(255) NOT NULL, -- Store the original file name/type for headers
+  `uploaded_by_t_id` VARCHAR(10) DEFAULT NULL,
+  `upload_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`material_id`),
+  KEY `c_id` (`c_id`),
+  KEY `uploaded_by_t_id` (`uploaded_by_t_id`),
+  CONSTRAINT `course_materials_ibfk_1` FOREIGN KEY (`c_id`) REFERENCES `Courses` (`c_id`) ON DELETE CASCADE,
+  CONSTRAINT `course_materials_ibfk_2` FOREIGN KEY (`uploaded_by_t_id`) REFERENCES `Teachers` (`t_id`) ON DELETE SET NULL
+)
 -- 4. INSERT STATEMENTS (Order adjusted to match CREATE TABLE order)
 
 INSERT INTO `Users` VALUES 
@@ -224,21 +238,7 @@ INSERT INTO `User_Audit_Log` VALUES
 (2,'S002','teacher','student','2025-10-24 14:00:56');
 
 
-DROP TABLE IF EXISTS `Course_Materials`;
-CREATE TABLE `Course_Materials` (
-  `material_id` INT NOT NULL AUTO_INCREMENT,
-  `c_id` VARCHAR(10) NOT NULL,
-  `title` VARCHAR(100) NOT NULL,
-  `file_content` LONGBLOB NOT NULL, -- Storing the file content as BLOB
-  `file_name` VARCHAR(255) NOT NULL, -- Store the original file name/type for headers
-  `uploaded_by_t_id` VARCHAR(10) DEFAULT NULL,
-  `upload_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`material_id`),
-  KEY `c_id` (`c_id`),
-  KEY `uploaded_by_t_id` (`uploaded_by_t_id`),
-  CONSTRAINT `course_materials_ibfk_1` FOREIGN KEY (`c_id`) REFERENCES `Courses` (`c_id`) ON DELETE CASCADE,
-  CONSTRAINT `course_materials_ibfk_2` FOREIGN KEY (`uploaded_by_t_id`) REFERENCES `Teachers` (`t_id`) ON DELETE SET NULL
-)
+
 
 -- 5. ROUTINES AND TRIGGERS
 
@@ -319,7 +319,7 @@ BEGIN
     WHERE d_id = OLD.d_id;
     IF course_count > 0 THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Cannot delete department while active courses are assigned to it.';
+        SET MESSAGE_TEXT = 'Cannot delete department while active courses are assigned to it.;   --change made here
     END IF;
 END ;;
 

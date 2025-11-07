@@ -31,6 +31,38 @@ BEGIN
         overall_avg_attendance_percent DESC;
 END$$
 
+DELIMITER $$
+
+-- 1. Students below a specific attendance MAX (NESTED SUBQUERY)
+DROP PROCEDURE IF EXISTS GetStudentsBelowAttendanceMax_Nested$$ -- Renamed Procedure
+CREATE PROCEDURE GetStudentsBelowAttendanceMax_Nested(IN p_max_attendance DECIMAL(5, 2)) -- Renamed Parameter
+BEGIN
+    SELECT
+        S.s_id,
+        S.name,
+        ROUND(AVG(CourseAttendance.attendance_percent), 2) AS overall_avg_attendance_percent
+    FROM
+        Students S
+    JOIN
+        Student_Courses SC ON S.s_id = SC.s_id
+    JOIN (
+        -- DERIVED TABLE: Calculates the attendance percentage for EACH student-course pair
+        SELECT
+            A.s_id,
+            A.c_id,
+            (SUM(CASE WHEN A.status = 'Present' THEN 1 ELSE 0 END) * 100.00) / COUNT(A.a_id) AS attendance_percent
+        FROM
+            Attendance A
+        GROUP BY
+            A.s_id, A.c_id
+    ) AS CourseAttendance ON S.s_id = CourseAttendance.s_id AND SC.c_id = CourseAttendance.c_id
+    GROUP BY
+        S.s_id, S.name
+    HAVING
+        ROUND(AVG(CourseAttendance.attendance_percent), 2) <= p_max_attendance -- Consistent Logic
+    ORDER BY
+        overall_avg_attendance_percent DESC; -- Shows the worst attenders last
+END$$
 
 -- 3. Course-Wise Grade Distribution (CTE and Conditional Aggregation)
 DROP PROCEDURE IF EXISTS GetCourseGradeDistributionStats$$

@@ -36,8 +36,13 @@ def close_connection(exception):
         db.close()
 
 def json_serial(obj):
-    """JSON serializer for objects not serializable by default json code"""
-    if isinstance(obj, (datetime, date)): return obj.isoformat()
+    """JSON serializer for objects not serializable by default json code, safely handling None types."""
+    if obj is None: 
+        return None # 🌟 FIX: Handle None (NULL) types by returning None or an empty string
+        
+    if isinstance(obj, (datetime, date)): 
+        return obj.isoformat()
+        
     raise TypeError(f"Type {type(obj)} not serializable")
 
 # --- API Endpoints ---
@@ -68,16 +73,39 @@ def get_dashboard_stats():
     cursor.close()
     return jsonify(stats)
 
+# MiniProj/backend.py (UPDATED)
+
 @app.route('/api/dashboard/student/<string:s_id>', methods=['GET'])
 def get_student_dashboard_data(s_id):
     db, err = get_db();
     if err: return jsonify({'courses': [], 'grades': []}), 500
+    
+    # Use buffered cursor (dictionary=True) for easy result handling
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT c.c_id, c.c_name FROM Courses c JOIN Student_Courses sc ON c.c_id = sc.c_id WHERE sc.s_id = %s", (s_id,))
-    courses = cursor.fetchall()
-    # Note: Grade calculation is now handled by a trigger, simplifying this query
+    
+    # --- 🌟 NEW: Call Student_Courses Stored Procedure 🌟 ---
+    try:
+        # 1. Execute the stored procedure
+        cursor.callproc('Student_Courses', (s_id,))
+        
+        # 2. Fetch all result sets (the courses list)
+        courses = []
+        # Use stored_results() to fetch results from the SP
+        for result in cursor.stored_results():
+            courses.extend(result.fetchall())
+    
+    except mysql.connector.Error as e:
+        # Handle potential errors during procedure execution
+        cursor.close()
+        # In a dashboard context, returning empty data is safer than a 500 error
+        print(f"Error calling Student_Courses SP: {e}")
+        courses = []
+    
+    # 3. Proceed with grades query (as before)
+    # Note: Grade calculation is handled by a trigger, simplifying this query
     cursor.execute("SELECT c.c_name, g.assessment, g.grade FROM Grades g JOIN Courses c ON g.c_id = c.c_id WHERE g.s_id = %s ORDER BY g.date DESC LIMIT 5", (s_id,))
     grades = cursor.fetchall()
+    
     cursor.close()
     return jsonify({'courses': courses, 'grades': grades})
 
@@ -379,27 +407,83 @@ def add_item(item_type):
     finally:
         cursor.close()
 
+@app.route('/api/student/attendance/course/<string:s_id>/<string:c_id>', methods=['GET'])
+def get_course_attendance_percentage(s_id, c_id):
+    """
+    Calls the CalculateAttendance UDF to get attendance percentage 
+    for a specific student in a specific course.
+    """
+    db, err = get_db()
+    if err: return jsonify({'percentage': 0.00}), 500
+    cursor = db.cursor()
+
+    # 🌟 THIS IS WHERE THE FUNCTION IS EXPLICITLY CALLED 🌟
+    query = "SELECT CalculateAttendance(%s, %s) AS attendance_percent"
+    
+    try:
+        cursor.execute(query, (s_id, c_id))
+        result = cursor.fetchone()
+        cursor.close()
+        
+        percentage = result[0] if result and result[0] is not None else 0.00
+        
+        # Returns the result in a clean JSON format
+        return jsonify({'percentage': float(percentage)})
+    except mysql.connector.Error as e:
+        cursor.close()
+        print(f"Error calling CalculateAttendance function: {e}")
+        return jsonify({'percentage': 0.00, 'error': str(e)}), 500
+
 @app.route('/api/<string:item_type>/<string:item_id>', methods=['DELETE'])
 def delete_item(item_type, item_id):
-    db, err = get_db();
-    if err: return jsonify({'success': False, 'message': err}), 500
+    db, err = get_db()
+    if err:
+        return jsonify({'success': False, 'message': err}), 500
     cursor = db.cursor()
+    deleted_total = 0
     try:
-        if item_type in ['students', 'teachers']:
-            # Deleting from Users cascades to Students/Teachers tables
+        if item_type == 'students':
+            cursor.execute("DELETE FROM Grades WHERE s_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+            cursor.execute("DELETE FROM Attendance WHERE s_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+            cursor.execute("DELETE FROM Student_Courses WHERE s_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+            # final: remove student record
+            cursor.execute("DELETE FROM Students WHERE s_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+            # optional: remove from Users (if Users.user_id == s_id)
             cursor.execute("DELETE FROM Users WHERE user_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+
+        elif item_type == 'teachers':
+            cursor.execute("DELETE FROM Course_Materials WHERE uploaded_by_t_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+            cursor.execute("DELETE FROM Teachers WHERE t_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+            cursor.execute("DELETE FROM Users WHERE user_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+
         elif item_type == 'departments':
             cursor.execute("DELETE FROM Departments WHERE d_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
         elif item_type == 'courses':
             cursor.execute("DELETE FROM Courses WHERE c_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
         elif item_type == 'announcements':
-             # Note: item_id is a_id (INT) for announcements
-             cursor.execute("DELETE FROM Announcements WHERE a_id = %s", (item_id,))
-        return jsonify({'success': True, 'message': 'Item deleted'})
+            cursor.execute("DELETE FROM Announcements WHERE a_id = %s", (item_id,))
+            deleted_total += cursor.rowcount
+        else:
+            # unknown item_type
+            cursor.close()
+            return jsonify({'success': False, 'message': 'Unknown item type'}), 400
+
+        db.commit()
+        return jsonify({'success': True, 'message': 'Item deleted', 'rows_affected': deleted_total})
     except mysql.connector.Error as e:
-        # Catch the specific error for FOREIGN KEY constraint violations
-        if e.errno == errorcode.ER_ROW_IS_REFERENCED_2:
-             return jsonify({'success': False, 'message': "Cannot delete: item is referenced by other records (e.g., student has courses, department has teachers). Delete those first."}), 400
+        db.rollback()
+        print(f"SQL Deletion Error: {e}")
+        cursor.close()
         return jsonify({'success': False, 'message': str(e)}), 400
     finally:
         cursor.close()
@@ -514,7 +598,36 @@ def get_department_course_summary():
     summary = cursor.fetchall()
     cursor.close()
     return jsonify(summary)
+"""
+@app.route('/api/report/course_performance_summary/<string:c_id>/<string:assessment>', methods=['GET'])
+def get_course_performance_summary_detail(c_id, assessment):
+    #Calls GetCoursePerformanceSummary Stored Procedure.
+    db, err = get_db()
+    if err: return jsonify({}), 500
+    # Use unbuffered cursor for stored procedure call
+    cursor = db.cursor()
+    
+    query = "CALL GetCoursePerformanceSummary(%s, %s)"
+    
+    try:
+        cursor.execute(query, (c_id, assessment))
+        
+        # Fetch results
+        result = None
+        columns = [col[0] for col in cursor.description]
+        data = cursor.fetchone()
+        if data:
+            result = dict(zip(columns, data))
+            
+        cursor.close()
+        return jsonify(result)
 
+    except mysql.connector.Error as e:
+        print(f"MySQL Error in performance SP call: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if cursor: cursor.close()
+"""
 @app.route('/api/report/high_attendance/<string:min_att_str>', methods=['GET'])
 def get_high_attendance_students(min_att_str):
     """
@@ -669,6 +782,69 @@ def get_course_attendance_by_date(c_id, date_str):
         cursor.close()
         return jsonify({'error': str(e)}), 500
     
+@app.route('/api/student/summary/<string:s_id>', methods=['GET'])
+def get_student_summary(s_id):
+    """Fetches comprehensive academic and personal data for a single student."""
+    db, err = get_db()
+    if err: return jsonify({'error': err}), 500
+    cursor = db.cursor(dictionary=True)
+
+    summary = {}
+
+    # 1. Student Personal Info
+    cursor.execute("""
+        SELECT s.s_id, s.name, s.enrollment_no, s.sem, d.d_name as department
+        FROM Students s
+        JOIN Departments d ON s.d_id = d.d_id
+        WHERE s.s_id = %s
+    """, (s_id,))
+    student_info = cursor.fetchone()
+    if not student_info:
+        cursor.close()
+        return jsonify({'error': 'Student not found'}), 404
+    summary.update(student_info)
+
+    # 2. Enrolled Courses and Attendance Summary
+    cursor.execute("""
+        SELECT
+            C.c_id,
+            C.c_name,
+            C.credits,
+            T.name AS teacher_name,
+            -- Calculates course-specific attendance using the UDF
+            CalculateAttendance(SC.s_id, C.c_id) AS attendance_percent
+        FROM Student_Courses SC
+        JOIN Courses C ON SC.c_id = C.c_id
+        LEFT JOIN Teachers T ON C.t_id = T.t_id
+        WHERE SC.s_id = %s
+    """, (s_id,))
+    enrolled_courses = cursor.fetchall()
+    summary['courses'] = enrolled_courses
+    
+    # 3. Overall Statistics (Overall Attendance Average)
+    if enrolled_courses:
+        total_credits = sum(c['credits'] for c in enrolled_courses)
+        avg_attendance = sum(c['attendance_percent'] for c in enrolled_courses) / len(enrolled_courses)
+        summary['total_credits'] = total_credits
+        summary['overall_attendance_avg'] = round(avg_attendance, 2)
+    else:
+        summary['total_credits'] = 0
+        summary['overall_attendance_avg'] = 0.00
+        
+    # 4. Grades
+    cursor.execute("""
+        SELECT C.c_name, G.assessment, G.marks_obtained, G.total_marks, G.grade
+        FROM Grades G
+        JOIN Courses C ON G.c_id = C.c_id
+        WHERE G.s_id = %s
+        ORDER BY C.c_name, G.date DESC
+    """, (s_id,))
+    summary['grades'] = cursor.fetchall()
+
+    cursor.close()
+    return jsonify(summary)
+
+
 # --- Main Execution ---
 if __name__ == '__main__':
     print("\nStarting Flask server... Open http://127.0.0.1:5001 in your browser.")

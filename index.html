@@ -186,6 +186,11 @@
             </main>
         </div>
     </div>
+    <div id="student-detail-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <p class="text-center p-8 text-indigo-600"><i class="fas fa-spinner fa-spin mr-2"></i> Loading student details...</p>
+    </div>
+</div>
 <div id="add-student-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 items-center justify-center z-50" style="display: none;">
     <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg"><h3 class="text-2xl font-bold mb-6">Add New Student</h3><form id="add-student-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input class="border p-2 rounded-lg" name="s_id" placeholder="Student ID (e.g., S003)" required><input class="border p-2 rounded-lg" name="name" placeholder="Full Name" required><input class="border p-2 rounded-lg" name="enrollment_no" placeholder="Enrollment No" required><input class="border p-2 rounded-lg" type="email" name="email" placeholder="Email" required><input class="border p-2 rounded-lg" type="date" name="dob" required><input class="border p-2 rounded-lg" type="number" name="sem" placeholder="Semester" required><select class="border p-2 rounded-lg" name="d_id" id="student-dept-select" required></select><input class="border p-2 rounded-lg" type="password" name="password" placeholder="Default Password" required></div><div class="mt-8 flex justify-end space-x-4"><button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Add Student</button></div></form></div>
 </div>
@@ -777,7 +782,11 @@ document.addEventListener('DOMContentLoaded', function() {
             coursesList.innerHTML = '';
             if (data.courses && data.courses.length > 0) {
                 data.courses.forEach(c => {
-                    coursesList.innerHTML += `<li class="p-3 rounded-md bg-gray-50">${c.c_name}</li>`;
+                    // 🌟 MODIFIED LINE: Displaying course name and teacher name 🌟
+                    coursesList.innerHTML += `<li class="p-3 rounded-md bg-gray-50">
+                                                 <p class="font-semibold">${c.c_name}</p>
+                                                 <p class="text-sm text-gray-600">Teacher: ${c.teacher_name || 'Unassigned'}</p>
+                                             </li>`;
                 });
             } else {
                 coursesList.innerHTML = '<li>You are not enrolled in any courses.</li>';
@@ -1199,11 +1208,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById(type);
         const typeTitle = type.charAt(0).toUpperCase() + type.slice(1);
 
-        // Define column headers dynamically. If rendering 'courses', add 'ENROLLED' column.
+        // Define column headers dynamically. 
         let displayColumns = [...columns];
         if (type === 'courses') {
-             // Add student_count column dynamically only for the courses table
-             displayColumns.push('student_count');
+            displayColumns.push('student_count');
         }
 
         let tableHeaders = displayColumns.map(col => `<th class="p-4 text-left font-semibold">${col.replace('_', ' ').toUpperCase()}</th>`).join('');
@@ -1211,30 +1219,42 @@ document.addEventListener('DOMContentLoaded', function() {
             tableHeaders = tableHeaders.replace('STUDENT COUNT', 'ENROLLED STUDENTS');
         }
         
+        // Set default row span based on column count + 2 (ID/Action)
         let tableRows = `<tr><td colspan="${columns.length + 2}" class="p-4 text-center">No data found.</td></tr>`;
+        
         if (data && data.length) {
             tableRows = data.map(item => {
                 const id_col = Object.keys(item)[0];
-                let cells = columns.map(col => `<td class="p-4">${item[col] || 'N/A'}</td>`).join('');
-                
-                // Add the student count cell specifically for the courses table
-                if (type === 'courses') {
-                    cells += `<td class="p-4 font-bold text-indigo-600">${item.student_count || 0}</td>`;
-                }
+                let cells = '';
 
-                return `<tr class="border-b" data-id="${item[id_col]}">
-                            ${cells}
-                            <td class="p-4">
-                                <button class="text-red-500 hover:underline delete-btn" data-type="${type}" data-id="${item[id_col]}">Delete</button>
-                            </td>
-                        </tr>`;
+                // Iterate over defined columns to build each cell (<td>)
+                displayColumns.forEach(col => {
+                    let cellContent = item[col] || 'N/A';
+                    
+                    // 🌟 FIX IMPLEMENTATION: Check for students/name to inject button 🌟
+                    if (type === 'students' && col === 'name') {
+                        // Inject the clickable button HTML
+                        cellContent = `<button class="student-detail-btn text-indigo-600 font-semibold hover:underline" data-id="${item.s_id}">${item.name}</button>`;
+                    } 
+                    
+                    // Check for courses student count column
+                    else if (type === 'courses' && col === 'student_count') {
+                        cellContent = `<span class="font-bold text-indigo-600">${item.student_count || 0}</span>`;
+                    }
+
+                    cells += `<td class="p-4">${cellContent}</td>`;
+                });
+
+                // inside renderManagementPage, replace the delete button creation with:
+                const idVal = item.s_id || item.t_id || item.c_id || item.d_id || item.a_id || item.user_id || item.id || item.email;
+                cells += `<td class="p-4"><button class="text-red-500 hover:underline delete-btn" data-type="${type}" data-id="${idVal}">Delete</button></td>`;
+
+
+                return `<tr class="border-b" data-id="${item[id_col]}">${cells}</tr>`;
             }).join('');
         }
 
-        // Adjust colspan for the final table based on whether the student count column was added
-        const finalColspan = type === 'courses' ? columns.length + 2 : columns.length + 1;
-
-
+        // The rest of the function remains the same
         container.innerHTML = `
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-semibold">Manage ${typeTitle}</h3>
@@ -1247,7 +1267,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 </table>
             </div>`;
     }
-
 
     const showPage = (hash) => {
         const user = JSON.parse(sessionStorage.getItem('user'));
@@ -1316,7 +1335,77 @@ document.addEventListener('DOMContentLoaded', function() {
             if (teacherSelect) teacherSelect.innerHTML = options;
         }
     }
+    async function handleStudentDetailClick(studentId) {
+        const modal = document.getElementById('student-detail-modal');
+        // Get the inner content div of the modal
+        const modalContentDiv = modal.children[0];
+        
+        modalContentDiv.innerHTML = '<p class="text-center p-8 text-indigo-600"><i class="fas fa-spinner fa-spin mr-2"></i> Loading student details...</p>';
+        showModal('student-detail-modal');
 
+        // Calls the new API endpoint defined in backend.py
+        const summary = await apiRequest(`/student/summary/${studentId}`);
+
+        if (!summary || summary.error) {
+            modalContentDiv.innerHTML = `<p class="text-center p-8 text-red-600">Error fetching data: ${(summary && summary.error) || 'Student data not found.'}</p>`;
+            return;
+        }
+
+        // --- Content Generation ---
+        
+        // 1. Grades Table
+        let gradesHtml = '<div class="bg-white rounded-lg shadow overflow-hidden"><table class="min-w-full"><thead class="table-header"><tr><th class="p-3 text-left font-semibold">Course</th><th class="p-3 text-left font-semibold">Assessment</th><th class="p-3 text-left font-semibold">Marks (Obtained/Total)</th><th class="p-3 text-left font-semibold">Grade</th></tr></thead><tbody>';
+        if (summary.grades.length > 0) {
+            gradesHtml += summary.grades.map(g => `
+                <tr class="border-b"><td class="p-3">${g.c_name}</td><td class="p-3">${g.assessment}</td><td class="p-3">${g.marks_obtained || 'N/A'}/${g.total_marks || 'N/A'}</td><td class="p-3 font-bold">${g.grade}</td></tr>
+            `).join('');
+        } else {
+             gradesHtml += `<tr><td colspan="4" class="p-3 text-center text-gray-500">No grades recorded.</td></tr>`;
+        }
+        gradesHtml += '</tbody></table></div>';
+        
+        // 2. Courses List
+        let coursesHtml = '<ul class="space-y-2">';
+        if (summary.courses.length > 0) {
+            coursesHtml += summary.courses.map(c => {
+                const attClass = (c.attendance_percent < 75) ? 'text-red-600' : 'text-green-600';
+                return `<li class="p-3 bg-gray-50 rounded-lg flex justify-between">
+                    <div><span class="font-semibold">${c.c_name}</span> (Credits: ${c.credits})</div>
+                    <div>Teacher: ${c.teacher_name || 'N/A'} | Att: <span class="${attClass} font-bold">${c.attendance_percent}%</span></div>
+                </li>`;
+            }).join('');
+        } else {
+             coursesHtml += `<li class="p-3 text-center text-gray-500">Not enrolled in any courses.</li>`;
+        }
+        coursesHtml += '</ul>';
+
+
+        // 3. Final HTML Structure (Replaces initial loading content)
+        const finalHtml = `
+            <div class="flex justify-between items-center pb-2 border-b mb-6">
+                <h3 class="text-3xl font-bold text-indigo-800">${summary.name}</h3>
+                <button type="button" class="modal-cancel-btn px-4 py-2 bg-gray-200 rounded-lg">Close</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="p-3 bg-gray-50 rounded-lg"><p class="text-sm text-gray-500">Enrollment No:</p><p class="font-bold">${summary.enrollment_no}</p></div>
+                <div class="p-3 bg-gray-50 rounded-lg"><p class="text-sm text-gray-500">Total Credits:</p><p class="font-bold">${summary.total_credits}</p></div>
+                <div class="p-3 bg-gray-50 rounded-lg"><p class="text-sm text-gray-500">Overall Attendance:</p><p class="font-bold ${(summary.overall_attendance_avg < 75) ? 'text-red-600' : 'text-green-600'}">${summary.overall_attendance_avg}%</p></div>
+            </div>
+
+            <h4 class="text-xl font-semibold mb-3 border-b pb-2">Enrolled Courses & Attendance</h4>
+            ${coursesHtml}
+            
+            <h4 class="text-xl font-semibold mt-6 mb-3 border-b pb-2">Grades Overview</h4>
+            ${gradesHtml}
+
+            <div class="mt-8 flex justify-end">
+                <button type="button" class="modal-cancel-btn px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Close</button>
+            </div>
+        `;
+        
+        modalContentDiv.innerHTML = finalHtml;
+    }
     // --- Event Listeners ---
     function setupEventListeners() {
         loginForm.addEventListener('submit', handleLogin);
@@ -1327,6 +1416,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.matches('.delete-btn')) {
                 handleDelete(e.target);
             }
+
+            if (e.target.matches('.student-detail-btn')) {
+                // Trigger the new detail function
+                handleStudentDetailClick(e.target.dataset.id);
+            }
+            
+            if (e.target.matches('.modal-cancel-btn')) {
+                const modal = e.target.closest('.modal');
+                if (modal) hideModal(modal.id);
+            }
+            
             if (e.target.matches('.add-btn')) {
                 showModal(e.target.dataset.modal);
             }
@@ -1541,9 +1641,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isPresent = existingStatus && existingStatus.toLowerCase() === 'present';
                 const isAbsent = existingStatus && existingStatus.toLowerCase() === 'absent';
                 
-                // Pre-check the appropriate radio button based on existing data
                 content += `<tr class="border-b" data-student-id="${student.s_id}">
-                    <td class="p-4">${student.name}</td>
+                    
+                    <!-- 🌟 START MODIFICATION HERE: Make the name clickable 🌟 -->
+                    <td class="p-4"><button class="student-detail-btn text-indigo-600 font-semibold hover:underline" data-id="${student.s_id}">${student.name}</button></td>
+                    <!-- 🌟 END MODIFICATION 🌟 -->
+                    
                     <td class="p-4">
                         <label class="mr-4"><input type="radio" name="status_${student.s_id}" value="Present" ${isPresent ? 'checked' : ''} required> Present</label>
                         <label><input type="radio" name="status_${student.s_id}" value="Absent" ${isAbsent ? 'checked' : ''}> Absent</label>
